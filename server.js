@@ -45,7 +45,7 @@ app.use(session({
   resave: false, saveUninitialized: false,
   cookie: { maxAge: 7*24*60*60*1000 }
 }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 const cleanUser = u => { const {password, ...rest} = u; return rest; };
 function requireLogin(req,res,next){
