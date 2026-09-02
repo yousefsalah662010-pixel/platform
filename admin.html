@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة المدير</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Cairo',sans-serif; }
+  body { background:#f1f5f9; }
+  .hidden { display:none !important; }
+  #loginBox { max-width:400px; margin:100px auto; background:#fff; padding:40px; border-radius:16px;
+    box-shadow:0 10px 40px rgba(0,0,0,.1); }
+  #loginBox h1 { text-align:center; color:#1e3a8a; margin-bottom:20px; }
+  input, select, textarea { width:100%; padding:11px; border:2px solid #e2e8f0; border-radius:10px;
+    font-family:'Cairo'; margin-bottom:12px; }
+  button { background:#1e3a8a; color:#fff; border:none; padding:12px 25px; border-radius:10px;
+    font-family:'Cairo'; font-weight:700; cursor:pointer; }
+  header { background:#1e3a8a; color:#fff; padding:15px 25px; display:flex; justify-content:space-between;
+    align-items:center; flex-wrap:wrap; gap:10px; }
+  header button { background:rgba(255,255,255,.2); }
+  .tabs { display:flex; gap:8px; padding:15px 25px; flex-wrap:wrap; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.05); }
+  .tabs button { background:#e2e8f0; color:#334155; }
+  .tabs button.active { background:#1e3a8a; color:#fff; }
+  .content { max-width:900px; margin:auto; padding:25px; }
+  .card { background:#fff; border-radius:14px; padding:20px; margin-bottom:15px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
+  .card .info { font-size:13px; color:#64748b; margin-bottom:8px; }
+  .card .txt { background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-size:14px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden;
+    box-shadow:0 4px 12px rgba(0,0,0,.06); }
+  th, td { padding:11px; text-align:right; font-size:13px; border-bottom:1px solid #f1f5f9; }
+  th { background:#1e3a8a; color:#fff; }
+  .badgeUsed { background:#fee2e2; color:#b91c1c; padding:3px 10px; border-radius:20px; font-size:12px; }
+  .badgeFree { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:20px; font-size:12px; }
+  h2 { color:#1e3a8a; margin-bottom:15px; }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>👑 لوحة المدير</h1>
+  <div id="loginMsg"></div>
+  <input id="aUser" placeholder="اسم المدير">
+  <input id="aPass" type="password" placeholder="الرقم السري">
+  <button style="width:100%;" onclick="adminLogin()">دخول</button>
+</div>
+
+<div id="adminApp" class="hidden">
+  <header>
+    <h1 style="font-size:20px;">👑 لوحة تحكم يوسف صلاح</h1>
+    <button onclick="adminLogout()">خروج</button>
+  </header>
+  <div class="tabs">
+    <button class="active" id="bt-msgs" onclick="showTab('msgs')">📨 رسائل الدعم</button>
+    <button id="bt-codes" onclick="showTab('codes')">🔑 رموز الدخول</button>
+    <button id="bt-lessons" onclick="showTab('lessons')">🎬 الدروس</button>
+    <button id="bt-addcourse" onclick="showTab('addcourse')">➕ إضافة كورس</button>
+    <button id="bt-users" onclick="showTab('users')">👥 الطلاب</button>
+  </div>
+  <div class="content">
+    <div id="tab-msgs"><h2>رسائل الطلاب</h2><div id="msgsList"></div></div>
+
+    <div id="tab-codes" class="hidden">
+      <h2>رموز الدخول</h2>
+      <div class="card">
+        <div class="row2">
+          <select id="codeCourse"></select>
+          <input id="newCode" placeholder="اكتب الرمز أو دوس توليد">
+        </div>
+        <button onclick="addCode()">➕ إضافة الرمز</button>
+        <button style="background:#059669;margin-right:8px;" onclick="genCode()">🎲 توليد رمز عشوائي</button>
+        <button style="background:#64748b;margin-right:8px;" onclick="loadCodes()">🔄 تحديث</button>
+      </div>
+      <div id="codesList"></div>
+    </div>
+
+    <div id="tab-lessons" class="hidden">
+      <h2>إضافة درس (فيديو)</h2>
+      <div class="card">
+        <select id="lessonCourse"></select>
+        <input id="lessonTitle" placeholder="عنوان الدرس">
+        <input id="lessonVideo" placeholder="رابط الفيديو (YouTube أو mp4) - اختياري">
+        <textarea id="lessonDesc" placeholder="وصف الدرس - اختياري"></textarea>
+        <button onclick="addLesson()">➕ إضافة الدرس</button>
+      </div>
+      <div id="lessonsList"></div>
+    </div>
+
+    <div id="tab-addcourse" class="hidden">
+      <h2>إضافة كورس جديد</h2>
+      <div class="card">
+        <input id="ncName" placeholder="اسم الكورس">
+        <input id="ncPrice" type="number" placeholder="السعر بالجنيه">
+        <input id="ncEmoji" placeholder="إيموجي للكورس (مثال: 📘)">
+        <textarea id="ncDesc" placeholder="وصف الكورس"></textarea>
+        <button onclick="addCourse()">➕ إضافة</button>
+      </div>
+    </div>
+
+    <div id="tab-users" class="hidden"><h2>الطلاب المسجلين</h2><div id="usersList"></div></div>
+  </div>
+</div>
+
+<script>
+const esc = s => String(s??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+async function adminLogin(){
+  const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:aUser.value,password:aPass.value})});
+  const d = await r.json();
+  if(d.ok){ showAdmin(); } else loginMsg.innerHTML='<div class="card" style="background:#fee2e2;">'+esc(d.msg)+'</div>';
+}
+async function adminLogout(){ await fetch('/api/admin/logout',{method:'POST'}); location.reload(); }
+
+function showTab(t){
+  ['msgs','codes','lessons','addcourse','users'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
+    document.getElementById('bt-'+x).classList.toggle('active', x===t);
+  });
+  if(t==='msgs') loadMsgs();
+  if(t==='codes') loadCodes();
+  if(t==='lessons') loadLessonsAdmin();
+  if(t==='users') loadUsers();
+}
+
+function showAdmin(){
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('adminApp').classList.remove('hidden');
+  loadCoursesSelects(); showTab('msgs');
+}
+
+async function loadCoursesSelects(){
+  const cs = await fetch('/api/admin/courses').then(r=>r.json());
+  const opts = cs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  document.getElementById('codeCourse').innerHTML = opts;
+  document.getElementById('lessonCourse').innerHTML = opts;
+}
+
+async function loadMsgs(){
+  const msgs = await fetch('/api/admin/messages').then(r=>r.json());
+  document.getElementById('msgsList').innerHTML = msgs.length ? msgs.map(m=>`
+    <div class="card">
+      <div class="info">👤 ${esc(m.first_name+' '+m.last_name)} | 📞 ${esc(m.phone)} | 🕐 ${esc(m.created_at)}</div>
+      <div class="txt">${esc(m.text)}</div>
+      <textarea id="rep-${m.id}" placeholder="اكتب ردك هنا...">${esc(m.reply||'')}</textarea>
+      <button onclick="sendReply(${m.id})">📤 ${m.reply?'تعديل الرد':'إرسال الرد'}</button>
+      ${m.reply?`<span style="color:#166534;font-size:13px;font-weight:700;margin-right:10px;">✅ تم الرد: ${esc(m.replied_at)}</span>`:''}
+    </div>`).join('') : '<div class="card">مفيش رسائل</div>';
+}
+async function sendReply(id){
+  await fetch('/api/admin/reply',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id, reply:document.getElementById('rep-'+id).value})});
+  loadMsgs();
+}
+
+async function addCode(){
+  const r = await fetch('/api/admin/codes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({course_id:codeCourse.value, code:newCode.value})});
+  const d = await r.json();
+  alert(d.ok?'✅ الرمز اتضاف':'❌ '+d.msg);
+  newCode.value=''; loadCodes();
+}
+function genCode(){ newCode.value = 'KG' + Math.random().toString(36).slice(2,8).toUpperCase(); }
+
+async function loadCodes(){
+  await loadCoursesSelects();
+  const courseId = codeCourse.value;
+  const codes = await fetch('/api/admin/codes?course_id='+courseId).then(r=>r.json());
+  document.getElementById('codesList').innerHTML = `<table>
+    <tr><th>الرمز</th><th>الحالة</th><th>استخدمه</th></tr>
+    ${codes.map(c=>`<tr><td style="font-weight:900;letter-spacing:1px;">${esc(c.code)}</td>
+      <td>${c.used?'<span class="badgeUsed">مستخدم</span>':'<span class="badgeFree">متاح</span>'}</td>
+      <td>${c.used_by_name?esc(c.used_by_name):'—'}</td></tr>`).join('')}</table>`;
+}
+
+async function addLesson(){
+  const r = await fetch('/api/admin/lessons',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({course_id:lessonCourse.value, title:lessonTitle.value,
+      video_url:lessonVideo.value, description:lessonDesc.value})});
+  const d = await r.json();
+  alert(d.ok?'✅ الدرس اتضاف':'❌ '+d.msg);
+  lessonTitle.value=''; lessonVideo.value=''; lessonDesc.value='';
+  loadLessonsAdmin();
+}
+async function loadLessonsAdmin(){
+  const courseId = lessonCourse.value;
+  const ls = await fetch('/api/admin/lessons?course_id='+courseId).then(r=>r.json());
+  document.getElementById('lessonsList').innerHTML = `<table>
+    <tr><th>#</th><th>الدرس</th><th>الفيديو</th></tr>
+    ${ls.map(l=>`<tr><td>${l.id}</td><td>${esc(l.title)}</td><td style="font-size:11px;">${esc(l.video_url||'مفيش')}</td></tr>`).join('')}</table>`;
+}
+
+async function addCourse(){
+  const r = await fetch('/api/admin/courses',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:ncName.value, description:ncDesc.value, price:ncPrice.value, emoji:ncEmoji.value})});
+  const d = await r.json();
+  if(d.ok){ alert('✅ الكورس اتضاف'); ncName.value=ncPrice.value=ncEmoji.value=ncDesc.value=''; loadCoursesSelects(); }
+}
+
+async function loadUsers(){
+  const us = await fetch('/api/admin/users').then(r=>r.json());
+  document.getElementById('usersList').innerHTML = `<table>
+    <tr><th>الاسم</th><th>الهاتف</th><th>ولي الأمر</th><th>الإيميل</th><th>السنة</th><th>النوع</th><th>التسجيل</th></tr>
+    ${us.map(u=>`<tr><td>${esc(u.first_name+' '+u.last_name)}</td><td>${esc(u.phone)}</td>
+      <td>${esc(u.parent_phone)}</td><td>${esc(u.email)}</td><td>${esc(u.grade)}</td>
+      <td>${esc(u.gender)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table>`;
+}
+
+window.onload = async ()=>{
+  const r = await fetch('/api/admin/messages');
+  if(r.ok) showAdmin();
+};
+</script>
+</body>
+</html>
