@@ -376,9 +376,11 @@ app.post('/api/admin/exam/grade', requireAdmin, async (req,res)=>{
   res.json({ok:true});
 });
 
-initDB().then(()=>{
-  app.listen(PORT, ()=> console.log('✅ السيرفر شغال على المنفذ ' + PORT));
-}).catch(e=>{
+let ready = false;
+initDB().then(()=>{ ready = true; }).catch(e=>{
   console.log('❌ مشكلة في قاعدة البيانات: ' + e.message);
-  process.exit(1);
 });
+module.exports = async (req, res) => {
+  if (!ready) { await initDB(); ready = true; }
+  app(req, res);
+};
