@@ -1,233 +1,16 @@
-// ═══════════ منصة يوسف صلاح - السيرفر ═══════════
-const express = require('express');
-const session = require('express-session');
-const bcrypt = require('bcryptjs');
-const fs = require('fs');
-const path = require('path');
-
-// ⚙️ بيانات المدير (غيّرها هنا)
-const ADMIN_USER = 'yousef salah';
-const ADMIN_PASS = '##Hh506080Hh##';
-const PORT = 3000;
-const DB_FILE = path.join(__dirname, 'database.json');
-
-const app = express();
-
-// ───── قاعدة البيانات (ملف JSON بسيط — كل البيانات بتتحفظ فيه) ─────
-let db;
-
-function saveDB(){ fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2)); }
-function nextId(){ return db.seq++; }
-
-if (fs.existsSync(DB_FILE)) {
-  db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-} else {
-  db = { seq: 1, users: [], courses: [], lessons: [], enrollments: [], codes: [], messages: [] };
-  db.courses.push(
-    { id: nextId(), name: 'كورس اللغة الإنجليزية من الصفر حتى A1',
-      description: 'كورس كامل يبدأ معاك من الصفر لحد مستوى A1: قواعد، مفردات، نطق، ومحادثة عملية.',
-      price: 300, emoji: '🇬🇧', color: 'linear-gradient(135deg,#2563eb,#1e3a8a)' },
-    { id: nextId(), name: 'شرح منهج البرمجة - أولى ثانوي',
-      description: 'شرح كامل لمنهج البرمجة أولى ثانوي خطوة بخطوة مع حل الأمثلة والتمارين.',
-      price: 250, emoji: '💻', color: 'linear-gradient(135deg,#7c3aed,#4c1d95)' },
-    { id: nextId(), name: 'تعلم HTML حتى الاحتراف',
-      description: 'اتعلم لغة HTML من أول وسم لحد ما تبني صفحات كاملة باحتراف.',
-      price: 200, emoji: '🌐', color: 'linear-gradient(135deg,#ea580c,#9a3412)' }
-  );
-  // رمز جاهز للكورس الأول
-  db.codes.push({ id: nextId(), code: 'KG421356', course_id: 1, used: 0, used_by: null });
-  saveDB();
-}
-
-app.use(express.json());
-app.use(session({
-  secret: 'youssef-change-this-secret-951',
-  resave: false, saveUninitialized: false,
-  cookie: { maxAge: 7*24*60*60*1000 }
-}));
-app.use(express.static(__dirname));
-
-const cleanUser = u => { const {password, ...rest} = u; return rest; };
-function requireLogin(req,res,next){
-  if(!req.session.userId) return res.status(401).json({error:'لازم تسجل دخول الأول'});
-  next();
-}
-function requireAdmin(req,res,next){
-  if(!req.session.admin) return res.status(401).json({error:'صلاحيات مدير مطلوبة'});
-  next();
-}
-
-// ═══════════ حسابات الطلاب ═══════════
-app.post('/api/signup', (req,res)=>{
-  const {first,last,phone,parent,email,pass,grade,gender} = req.body;
-  if(!first||!last||!phone||!parent||!email||!pass||!grade||!gender)
-    return res.json({ok:false,msg:'املأ كل الحقول'});
-  if(pass.length < 6) return res.json({ok:false,msg:'الرقم السري لازم 6 حروف على الأقل'});
-  const em = email.trim().toLowerCase();
-  if(db.users.find(u=>u.email===em)) return res.json({ok:false,msg:'الإيميل ده مسجل قبل كده'});
-  const user = {
-    id: nextId(),
-    first_name: first.trim(), last_name: last.trim(),
-    phone: phone.trim(), parent_phone: parent.trim(),
-    email: em, password: bcrypt.hashSync(pass, 10),
-    grade, gender,
-    created_at: new Date().toLocaleString('ar-EG')
-  };
-  db.users.push(user); saveDB();
-  req.session.userId = user.id;
-  res.json({ok:true});
-});
-
-app.post('/api/login', (req,res)=>{
-  const em = (req.body.email||'').trim().toLowerCase();
-  const user = db.users.find(u=>u.email===em);
-  if(!user || !bcrypt.compareSync(req.body.pass||'', user.password))
-    return res.json({ok:false,msg:'الإيميل أو الرقم السري غلط'});
-  req.session.userId = user.id;
-  res.json({ok:true});
-});
-
-app.post('/api/logout', (req,res)=> req.session.destroy(()=>res.json({ok:true})));
-
-app.get('/api/me', requireLogin, (req,res)=>{
-  const user = db.users.find(u=>u.id===req.session.userId);
-  const enrollments = db.enrollments
-    .filter(e=>e.user_id===user.id)
-    .map(e=>({course_id:e.course_id, expires_at:e.expires_at}));
-  res.json({user: cleanUser(user), enrollments});
-});
-
-// ═══════════ الكورسات ═══════════
-app.get('/api/courses', (req,res)=>{
-  res.json(db.courses.slice().sort((a,b)=>a.id-b.id));
-});
-
-// تفعيل رمز الدخول
-app.post('/api/activate', requireLogin, (req,res)=>{
-  const courseId = Number(req.body.courseId);
-  const code = String(req.body.code||'').trim();
-  if(!code) return res.json({ok:false,msg:'اكتب الرمز الأول'});
-  const row = db.codes.find(c=>c.code===code);
-  if(!row || row.course_id !== courseId) return res.json({ok:false,msg:'الرمز غير صحيح'});
-  if(row.used) return res.json({ok:false,msg:'الرمز ده مستخدم قبل كده'});
-  if(db.enrollments.find(e=>e.user_id===req.session.userId && e.course_id===courseId))
-    return res.json({ok:false,msg:'أنت مشترك في الكورس ده بالفعل'});
-  const expires = new Date(Date.now() + 30*24*60*60*1000).toISOString(); // شهر كامل
-  db.enrollments.push({ id:nextId(), user_id:req.session.userId, course_id:courseId, expires_at:expires });
-  row.used = 1; row.used_by = req.session.userId;
-  saveDB();
-  res.json({ok:true});
-});
-
-// محتوى الكورس (للمشتركين بس والاشتراك ساري)
-app.get('/api/course/:id', requireLogin, (req,res)=>{
-  const courseId = Number(req.params.id);
-  const enr = db.enrollments.find(e=>e.user_id===req.session.userId && e.course_id===courseId);
-  if(!enr) return res.status(403).json({error:'أنت مش مشترك في الكورس ده'});
-  if(new Date(enr.expires_at) < new Date()) return res.status(403).json({error:'انتهى شهر الاشتراك'});
-  const lessons = db.lessons.filter(l=>l.course_id===courseId).sort((a,b)=>a.id-b.id);
-  res.json({lessons, expires_at: enr.expires_at});
-});
-
-// ═══════════ الدعم ═══════════
-app.post('/api/support', requireLogin, (req,res)=>{
-  const text = (req.body.text||'').trim();
-  if(!text) return res.json({ok:false});
-  db.messages.push({ id:nextId(), user_id:req.session.userId, text, reply:null,
-    created_at:new Date().toLocaleString('ar-EG'), replied_at:null });
-  saveDB();
-  res.json({ok:true});
-});
-
-app.get('/api/my-messages', requireLogin, (req,res)=>{
-  res.json(db.messages.filter(m=>m.user_id===req.session.userId).sort((a,b)=>b.id-a.id));
-});
-
-// ═══════════ لوحة المدير ═══════════
-app.post('/api/admin/login', (req,res)=>{
-  if(req.body.username===ADMIN_USER && req.body.password===ADMIN_PASS){
-    req.session.admin = true; return res.json({ok:true});
-  }
-  res.json({ok:false,msg:'بيانات المدير غلط'});
-});
-app.post('/api/admin/logout', (req,res)=>{ req.session.admin=false; res.json({ok:true}); });
-
-app.get('/api/admin/messages', requireAdmin, (req,res)=>{
-  const msgs = db.messages.slice().sort((a,b)=>b.id-a.id).map(m=>{
-    const u = db.users.find(x=>x.id===m.user_id) || {};
-    return {...m, first_name:u.first_name, last_name:u.last_name, phone:u.phone, email:u.email};
-  });
-  res.json(msgs);
-});
-app.post('/api/admin/reply', requireAdmin, (req,res)=>{
-  const m = db.messages.find(x=>x.id===Number(req.body.id));
-  if(m){ m.reply = req.body.reply; m.replied_at = new Date().toLocaleString('ar-EG'); saveDB(); }
-  res.json({ok:true});
-});
-
-app.get('/api/admin/users', requireAdmin, (req,res)=>{
-  res.json(db.users.slice().sort((a,b)=>b.id-a.id).map(cleanUser));
-});
-
-app.get('/api/admin/courses', requireAdmin, (req,res)=>{
-  res.json(db.courses.slice().sort((a,b)=>a.id-b.id));
-});
-app.post('/api/admin/courses', requireAdmin, (req,res)=>{
-  const {name,description,price,emoji} = req.body;
-  db.courses.push({ id:nextId(), name, description, price:Number(price)||0,
-    emoji: emoji||'📚', color:'linear-gradient(135deg,#1e3a8a,#3b82f6)' });
-  saveDB();
-  res.json({ok:true});
-});
-
-app.post('/api/admin/codes', requireAdmin, (req,res)=>{
-  const c = String(req.body.code||'').trim().toUpperCase();
-  if(!c) return res.json({ok:false,msg:'اكتب الرمز'});
-  if(db.codes.find(x=>x.code===c)) return res.json({ok:false,msg:'الرمز ده موجود قبل كده'});
-  db.codes.push({ id:nextId(), code:c, course_id:Number(req.body.course_id), used:0, used_by:null });
-  saveDB();
-  res.json({ok:true});
-});
-app.get('/api/admin/codes', requireAdmin, (req,res)=>{
-  const courseId = Number(req.query.course_id);
-  const codes = db.codes.filter(c=>c.course_id===courseId).sort((a,b)=>b.id-a.id).map(c=>{
-    const u = c.used_by ? db.users.find(x=>x.id===c.used_by) : null;
-    return {...c, used_by_name: u ? u.first_name : null};
-  });
-  res.json(codes);
-});
-
-app.post('/api/admin/lessons', requireAdmin, (req,res)=>{
-  const {course_id,title,video_url,description} = req.body;
-  if(!title) return res.json({ok:false,msg:'اكتب عنوان الدرس'});
-  db.lessons.push({ id:nextId(), course_id:Number(course_id), title,
-    video_url: video_url||null, description: description||null });
-  saveDB();
-  res.json({ok:true});
-});
-app.get('/api/admin/lessons', requireAdmin, (req,res)=>{
-  res.json(db.lessons.filter(l=>l.course_id===Number(req.query.course_id)).sort((a,b)=>a.id-b.id));
-});
-
-app.listen(PORT, ()=>{
-  console.log('✅ السيرفر شغال: http://localhost:' + PORT);
-  console.log('👑 لوحة المدير: http://localhost:' + PORT + '/admin.html');
-});
-
-/* نسخة PostgreSQL للنشر على الإنترنت - محفوظة هنا كمرجع غير مُنفّذ.
+// ═══════════ منصة يوسف صلاح - v2 (امتحانات + كتب + تعطيل حسابات) ═══════════
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const path = require('path');
 
-// ⚙️ بيانات المدير (على Render هنحط الرقم السري في Environment Variables)
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const PORT = process.env.PORT || 3000;
 
 if (!process.env.DATABASE_URL) {
-  console.log('⚠️ النسخة دي للنشر على النت — محتاجة DATABASE_URL (هنعملها في خطوات Render و Neon)');
+  console.log('⚠️ النسخة دي للنشر — محتاجة DATABASE_URL');
   process.exit(1);
 }
 
@@ -238,57 +21,45 @@ const pool = new Pool({
 
 async function initDB(){
   await pool.query(`CREATE TABLE IF NOT EXISTS users(
-    id SERIAL PRIMARY KEY,
-    first_name TEXT NOT NULL, last_name TEXT NOT NULL,
-    phone TEXT NOT NULL, parent_phone TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
-    grade TEXT NOT NULL, gender TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-  )`);
+    id SERIAL PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
+    phone TEXT NOT NULL, parent_phone TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL, grade TEXT NOT NULL, gender TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS courses(
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL, description TEXT NOT NULL,
+    id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
     price INTEGER NOT NULL, emoji TEXT DEFAULT '📚',
-    color TEXT DEFAULT 'linear-gradient(135deg,#1e3a8a,#3b82f6)'
-  )`);
+    color TEXT DEFAULT 'linear-gradient(135deg,#1e3a8a,#3b82f6)')`);
   await pool.query(`CREATE TABLE IF NOT EXISTS lessons(
     id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
-    title TEXT NOT NULL, video_url TEXT, description TEXT
-  )`);
+    title TEXT NOT NULL, video_url TEXT, description TEXT)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS enrollments(
     id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, course_id INTEGER NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, course_id)
-  )`);
+    UNIQUE(user_id, course_id))`);
   await pool.query(`CREATE TABLE IF NOT EXISTS codes(
-    id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL,
-    course_id INTEGER NOT NULL, used INTEGER DEFAULT 0, used_by INTEGER
-  )`);
+    id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL, course_id INTEGER NOT NULL,
+    used INTEGER DEFAULT 0, used_by INTEGER, item_type TEXT DEFAULT 'course')`);
   await pool.query(`CREATE TABLE IF NOT EXISTS messages(
     id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
-    reply TEXT, created_at TIMESTAMP DEFAULT NOW(), replied_at TEXT
-  )`);
-
-  // أول مرة فقط: إضافة الكورسات والرمز الأول
-  const r = await pool.query('SELECT COUNT(*)::int AS n FROM courses');
-  if (r.rows[0].n === 0) {
-    const c1 = await pool.query(
-      'INSERT INTO courses(name,description,price,emoji,color) VALUES($1,$2,$3,$4,$5) RETURNING id',
-      ['كورس اللغة الإنجليزية من الصفر حتى A1',
-       'كورس كامل يبدأ معاك من الصفر لحد مستوى A1: قواعد، مفردات، نطق، ومحادثة عملية.',
-       300, '🇬🇧', 'linear-gradient(135deg,#2563eb,#1e3a8a)']);
-    await pool.query(
-      'INSERT INTO courses(name,description,price,emoji,color) VALUES($1,$2,$3,$4,$5)',
-      ['شرح منهج البرمجة - أولى ثانوي',
-       'شرح كامل لمنهج البرمجة أولى ثانوي خطوة بخطوة مع حل الأمثلة والتمارين.',
-       250, '💻', 'linear-gradient(135deg,#7c3aed,#4c1d95)']);
-    await pool.query(
-      'INSERT INTO courses(name,description,price,emoji,color) VALUES($1,$2,$3,$4,$5)',
-      ['تعلم HTML حتى الاحتراف',
-       'اتعلم لغة HTML من أول وسم لحد ما تبني صفحات كاملة باحتراف.',
-       200, '🌐', 'linear-gradient(135deg,#ea580c,#9a3412)']);
-    await pool.query('INSERT INTO codes(code,course_id) VALUES($1,$2)', ['KG421356', c1.rows[0].id]);
-  }
+    reply TEXT, created_at TIMESTAMP DEFAULT NOW(), replied_at TEXT)`);
+  // ── جديد v2 ──
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled INTEGER DEFAULT 0`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS books(
+    id SERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT,
+    price INTEGER NOT NULL, emoji TEXT DEFAULT '📖', pdf_url TEXT)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS exams(
+    id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
+    title TEXT NOT NULL, duration_minutes INTEGER DEFAULT 30,
+    status TEXT DEFAULT 'closed', created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS questions(
+    id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL,
+    type TEXT NOT NULL, text TEXT NOT NULL,
+    options TEXT, order_items TEXT, correct TEXT, points INTEGER DEFAULT 1)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS submissions(
+    id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+    answers TEXT, score REAL DEFAULT 0, essay_score REAL DEFAULT 0,
+    essay_pending INTEGER DEFAULT 0, time_taken INTEGER DEFAULT 0,
+    submitted_at TIMESTAMP DEFAULT NOW(), UNIQUE(exam_id, user_id))`);
 }
 
 const app = express();
@@ -298,7 +69,7 @@ app.use(session({
   resave: false, saveUninitialized: false,
   cookie: { maxAge: 7*24*60*60*1000 }
 }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 const cleanUser = u => { const {password, ...rest} = u; return rest; };
 function requireLogin(req,res,next){
@@ -336,6 +107,7 @@ app.post('/api/login', async (req,res)=>{
     const user = r.rows[0];
     if(!user || !bcrypt.compareSync(req.body.pass||'', user.password))
       return res.json({ok:false,msg:'الإيميل أو الرقم السري غلط'});
+    if(user.disabled) return res.json({ok:false,msg:'تم تعطيل حسابك — تواصل مع الدعم'});
     req.session.userId = user.id;
     res.json({ok:true});
   } catch(e){ res.json({ok:false,msg:'حصل خطأ، حاول تاني'}); }
@@ -346,8 +118,10 @@ app.post('/api/logout', (req,res)=> req.session.destroy(()=>res.json({ok:true}))
 app.get('/api/me', requireLogin, async (req,res)=>{
   const u = (await pool.query('SELECT * FROM users WHERE id=$1',[req.session.userId])).rows[0];
   if(!u) { req.session.destroy(()=>{}); return res.status(401).json({error:'سجل دخول تاني'}); }
+  if(u.disabled) return res.status(403).json({error:'تم تعطيل حسابك — تواصل مع الدعم'});
   const enr = await pool.query('SELECT course_id, expires_at FROM enrollments WHERE user_id=$1 ORDER BY id',[u.id]);
-  res.json({user: cleanUser(u), enrollments: enr.rows});
+  const bk = await pool.query('SELECT course_id AS book_id FROM codes WHERE used_by=$1 AND item_type=$2',[u.id,'book']);
+  res.json({user: cleanUser(u), enrollments: enr.rows, books: bk.rows});
 });
 
 // ═══════════ الكورسات ═══════════
@@ -360,7 +134,7 @@ app.post('/api/activate', requireLogin, async (req,res)=>{
   const code = String(req.body.code||'').trim();
   if(!code) return res.json({ok:false,msg:'اكتب الرمز الأول'});
   try {
-    const c = (await pool.query('SELECT * FROM codes WHERE code=$1',[code])).rows[0];
+    const c = (await pool.query("SELECT * FROM codes WHERE code=$1 AND item_type='course'",[code])).rows[0];
     if(!c || c.course_id !== courseId) return res.json({ok:false,msg:'الرمز غير صحيح'});
     if(c.used) return res.json({ok:false,msg:'الرمز ده مستخدم قبل كده'});
     const ex = await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId]);
@@ -381,6 +155,85 @@ app.get('/api/course/:id', requireLogin, async (req,res)=>{
   res.json({lessons, expires_at: enr.expires_at});
 });
 
+// ═══════════ الامتحانات (للطلاب) ═══════════
+app.get('/api/exam/:courseId', requireLogin, async (req,res)=>{
+  const courseId = Number(req.params.courseId);
+  const enr = (await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId])).rows[0];
+  if(!enr) return res.status(403).json({error:'أنت مش مشترك في الكورس ده'});
+  const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
+  if(!exam) return res.json({status:'none'});
+  if(exam.status==='results') return res.json({status:'results', examTitle: exam.title});
+  if(exam.status!=='open') return res.json({status:'closed'});
+  const sub = (await pool.query('SELECT * FROM submissions WHERE exam_id=$1 AND user_id=$2',[exam.id,req.session.userId])).rows[0];
+  if(sub) return res.json({status:'submitted', score: sub.score+sub.essay_score, essayPending: !!sub.essay_pending});
+  const qs = (await pool.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY id',[exam.id])).rows
+    .map(q=>{
+      const o = {id:q.id, type:q.type, text:q.text, points:q.points};
+      if(q.type==='mcq') o.options = JSON.parse(q.options||'[]');
+      if(q.type==='order'){
+        const items = JSON.parse(q.order_items||'[]');
+        for(let i=items.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [items[i],items[j]]=[items[j],items[i]]; }
+        o.items = items;
+      }
+      return o;
+    });
+  res.json({status:'open', examTitle: exam.title, duration: exam.duration_minutes, questions: qs});
+});
+
+app.post('/api/exam/:courseId/submit', requireLogin, async (req,res)=>{
+  const courseId = Number(req.params.courseId);
+  const exam = (await pool.query("SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1",[courseId])).rows[0];
+  if(!exam || exam.status!=='open') return res.json({ok:false,msg:'الامتحان مقفول'});
+  const sub = (await pool.query('SELECT id FROM submissions WHERE exam_id=$1 AND user_id=$2',[exam.id,req.session.userId])).rows[0];
+  if(sub) return res.json({ok:false,msg:'أنت سلمت الامتحان ده قبل كده'});
+  const answers = Array.isArray(req.body.answers)? req.body.answers : [];
+  const timeTaken = Math.max(0, Math.min(Number(req.body.time_taken)||0, 24*60*60));
+  const qs = (await pool.query('SELECT * FROM questions WHERE exam_id=$1',[exam.id])).rows;
+  let score = 0, essayPending = 0;
+  for(const q of qs){
+    const a = answers.find(x=>Number(x.qid)===q.id);
+    if(q.type==='mcq' || q.type==='truefalse'){
+      if(a && String(a.value??'').trim() === String(q.correct||'').trim()) score += Number(q.points)||1;
+    } else if(q.type==='order'){
+      if(a && Array.isArray(a.value)){
+        const correct = JSON.parse(q.order_items||'[]');
+        if(JSON.stringify(a.value)===JSON.stringify(correct)) score += Number(q.points)||1;
+      }
+    } else if(q.type==='essay'){ essayPending = 1; }
+  }
+  await pool.query(
+    `INSERT INTO submissions(exam_id,user_id,answers,score,essay_pending,time_taken)
+     VALUES($1,$2,$3,$4,$5,$6)`,
+    [exam.id, req.session.userId, JSON.stringify(answers), score, essayPending, timeTaken]);
+  res.json({ok:true, score, essayPending: !!essayPending});
+});
+
+app.get('/api/exam/:courseId/honor', async (req,res)=>{
+  const courseId = Number(req.params.courseId);
+  const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
+  if(!exam || exam.status!=='results') return res.json({status:'closed'});
+  const rows = (await pool.query(
+    `SELECT u.first_name, u.last_name, u.grade,
+            (s.score+s.essay_score) AS total, s.time_taken, s.essay_pending
+     FROM submissions s JOIN users u ON u.id=s.user_id
+     WHERE s.exam_id=$1 ORDER BY total DESC, s.time_taken ASC`,[exam.id])).rows;
+  res.json({status:'results', examTitle: exam.title, results: rows});
+});
+
+// ═══════════ الكتب ═══════════
+app.get('/api/books', async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM books ORDER BY id DESC')).rows);
+});
+app.post('/api/activate-book', requireLogin, async (req,res)=>{
+  const bookId = Number(req.body.bookId);
+  const code = String(req.body.code||'').trim();
+  const c = (await pool.query("SELECT * FROM codes WHERE code=$1 AND item_type='book'",[code])).rows[0];
+  if(!c || c.course_id !== bookId) return res.json({ok:false,msg:'الرمز غير صحيح'});
+  if(c.used) return res.json({ok:false,msg:'الرمز ده مستخدم قبل كده'});
+  await pool.query('UPDATE codes SET used=1, used_by=$1 WHERE id=$2',[req.session.userId,c.id]);
+  res.json({ok:true});
+});
+
 // ═══════════ الدعم ═══════════
 app.post('/api/support', requireLogin, async (req,res)=>{
   const text = (req.body.text||'').trim();
@@ -388,7 +241,6 @@ app.post('/api/support', requireLogin, async (req,res)=>{
   await pool.query('INSERT INTO messages(user_id,text) VALUES($1,$2)',[req.session.userId,text]);
   res.json({ok:true});
 });
-
 app.get('/api/my-messages', requireLogin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM messages WHERE user_id=$1 ORDER BY id DESC',[req.session.userId])).rows);
 });
@@ -415,6 +267,12 @@ app.post('/api/admin/reply', requireAdmin, async (req,res)=>{
 app.get('/api/admin/users', requireAdmin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM users ORDER BY id DESC')).rows.map(cleanUser));
 });
+app.post('/api/admin/toggle-user', requireAdmin, async (req,res)=>{
+  const u = (await pool.query('SELECT disabled FROM users WHERE id=$1',[Number(req.body.user_id)])).rows[0];
+  if(!u) return res.json({ok:false});
+  await pool.query('UPDATE users SET disabled=$1 WHERE id=$2',[u.disabled?0:1, Number(req.body.user_id)]);
+  res.json({ok:true, disabled: u.disabled?0:1});
+});
 
 app.get('/api/admin/courses', requireAdmin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM courses ORDER BY id')).rows);
@@ -428,16 +286,20 @@ app.post('/api/admin/courses', requireAdmin, async (req,res)=>{
 
 app.post('/api/admin/codes', requireAdmin, async (req,res)=>{
   const c = String(req.body.code||'').trim().toUpperCase();
+  const itemType = (req.body.item_type==='book') ? 'book' : 'course';
   if(!c) return res.json({ok:false,msg:'اكتب الرمز'});
   try {
-    await pool.query('INSERT INTO codes(code,course_id) VALUES($1,$2)',[c,Number(req.body.course_id)]);
+    await pool.query('INSERT INTO codes(code,course_id,item_type) VALUES($1,$2,$3)',
+      [c, Number(req.body.item_id||req.body.course_id), itemType]);
     res.json({ok:true});
   } catch(e){ res.json({ok:false,msg:'الرمز ده موجود قبل كده'}); }
 });
 app.get('/api/admin/codes', requireAdmin, async (req,res)=>{
+  const itemType = req.query.item_type || 'course';
+  const itemId = Number(req.query.item_id || req.query.course_id);
   res.json((await pool.query(`SELECT c.*, u.first_name AS used_by_name FROM codes c
-    LEFT JOIN users u ON u.id=c.used_by WHERE c.course_id=$1 ORDER BY c.id DESC`,
-    [Number(req.query.course_id)])).rows);
+    LEFT JOIN users u ON u.id=c.used_by
+    WHERE c.item_type=$1 AND c.course_id=$2 ORDER BY c.id DESC`,[itemType,itemId])).rows);
 });
 
 app.post('/api/admin/lessons', requireAdmin, async (req,res)=>{
@@ -451,12 +313,83 @@ app.get('/api/admin/lessons', requireAdmin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM lessons WHERE course_id=$1 ORDER BY id',[Number(req.query.course_id)])).rows);
 });
 
+// ─── الكتب (مدير) ───
+app.post('/api/admin/books', requireAdmin, async (req,res)=>{
+  const {title,description,price,emoji,pdf_url} = req.body;
+  if(!title) return res.json({ok:false,msg:'اكتب اسم الكتاب'});
+  await pool.query('INSERT INTO books(title,description,price,emoji,pdf_url) VALUES($1,$2,$3,$4,$5)',
+    [title, description||'', Number(price)||0, emoji||'📖', pdf_url||null]);
+  res.json({ok:true});
+});
+app.get('/api/admin/books', requireAdmin, async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM books ORDER BY id DESC')).rows);
+});
+app.post('/api/admin/books/delete', requireAdmin, async (req,res)=>{
+  await pool.query('DELETE FROM books WHERE id=$1',[Number(req.body.id)]);
+  res.json({ok:true});
+});
+
+// ─── الامتحانات (مدير) ───
+app.get('/api/admin/exam', requireAdmin, async (req,res)=>{
+  const courseId = Number(req.query.course_id);
+  const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
+  if(!exam) return res.json({exam:null});
+  const questions = (await pool.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY id',[exam.id])).rows
+    .map(q=>({...q, options: q.options?JSON.parse(q.options):null, order_items: q.order_items?JSON.parse(q.order_items):null}));
+  const subs = (await pool.query(
+    `SELECT s.*, u.first_name, u.last_name FROM submissions s
+     JOIN users u ON u.id=s.user_id WHERE s.exam_id=$1 ORDER BY (s.score+s.essay_score) DESC, s.time_taken ASC`,[exam.id])).rows;
+  res.json({exam, questions, submissions: subs});
+});
+app.post('/api/admin/exam', requireAdmin, async (req,res)=>{
+  const courseId = Number(req.body.course_id);
+  const old = (await pool.query('SELECT id FROM exams WHERE course_id=$1',[courseId])).rows[0];
+  if(old) return res.json({ok:false,msg:'فيه امتحان موجود للكورس ده — امسحه الأول'});
+  await pool.query('INSERT INTO exams(course_id,title,duration_minutes) VALUES($1,$2,$3)',
+    [courseId, req.body.title||'امتحان', Number(req.body.duration_minutes)||30]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/status', requireAdmin, async (req,res)=>{
+  const st = req.body.status;
+  if(!['open','closed','results'].includes(st)) return res.json({ok:false,msg:'حالة غير صحيحة'});
+  await pool.query('UPDATE exams SET status=$1 WHERE id=$2',[st, Number(req.body.exam_id)]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/delete', requireAdmin, async (req,res)=>{
+  const examId = Number(req.body.exam_id);
+  await pool.query('DELETE FROM submissions WHERE exam_id=$1',[examId]);
+  await pool.query('DELETE FROM questions WHERE exam_id=$1',[examId]);
+  await pool.query('DELETE FROM exams WHERE id=$1',[examId]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/question', requireAdmin, async (req,res)=>{
+  const {exam_id,type,text,points,options,order_items,correct} = req.body;
+  if(!text) return res.json({ok:false,msg:'اكتب نص السؤال'});
+  await pool.query(
+    'INSERT INTO questions(exam_id,type,text,points,options,order_items,correct) VALUES($1,$2,$3,$4,$5,$6,$7)',
+    [Number(exam_id), type, text, Number(points)||1,
+     options?JSON.stringify(options):null,
+     order_items?JSON.stringify(order_items):null,
+     correct||null]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/question/delete', requireAdmin, async (req,res)=>{
+  await pool.query('DELETE FROM questions WHERE id=$1',[Number(req.body.id)]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/grade', requireAdmin, async (req,res)=>{
+  const subId = Number(req.body.submission_id);
+  const grades = req.body.grades || {};
+  const essayTotal = Object.values(grades).reduce((a,b)=>a+(Number(b)||0),0);
+  await pool.query('UPDATE submissions SET essay_score=$1, essay_pending=0 WHERE id=$2',[essayTotal, subId]);
+  res.json({ok:true});
+});
+
 initDB().then(()=>{
-  app.listen(PORT, ()=>{
-    console.log('✅ السيرفر شغال على المنفذ ' + PORT);
-  });
+  app.listen(PORT, ()=> console.log('✅ السيرفر شغال على المنفذ ' + PORT));
 }).catch(e=>{
   console.log('❌ مشكلة في قاعدة البيانات: ' + e.message);
   process.exit(1);
 });
-*/
+
+
