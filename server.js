@@ -384,6 +384,20 @@ app.post('/api/admin/courses', requireAdmin, async (req,res)=>{
   res.json({ok:true});
 });
 
+app.post('/api/admin/courses/delete', requireAdmin, async (req,res)=>{
+  const cid = Number(req.body.id);
+  if(!cid) return res.json({ok:false,msg:'معرف الكورس ناقص'});
+  await pool.query('DELETE FROM submissions WHERE exam_id IN (SELECT id FROM exams WHERE course_id=$1)',[cid]);
+  await pool.query('DELETE FROM questions WHERE exam_id IN (SELECT id FROM exams WHERE course_id=$1)',[cid]);
+  await pool.query('DELETE FROM exams WHERE course_id=$1',[cid]);
+  await pool.query('DELETE FROM lesson_views WHERE lesson_id IN (SELECT id FROM lessons WHERE course_id=$1)',[cid]);
+  await pool.query('DELETE FROM lessons WHERE course_id=$1',[cid]);
+  await pool.query('DELETE FROM enrollments WHERE course_id=$1',[cid]);
+  await pool.query('DELETE FROM codes WHERE course_id=$1 AND item_type=$2',[cid,'course']);
+  await pool.query('DELETE FROM courses WHERE id=$1',[cid]);
+  res.json({ok:true});
+});
+
 app.post('/api/admin/codes', requireAdmin, async (req,res)=>{
   const c = String(req.body.code||'').trim().toUpperCase();
   const itemType = (req.body.item_type==='book') ? 'book' : 'course';
