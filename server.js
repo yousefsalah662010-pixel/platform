@@ -526,7 +526,8 @@ if(!process.env.VERCEL){
     process.exit(1);
   });
 }
+let initDone = false;
 module.exports = async (req, res) => {
-  await initPromise;
+  if (!initDone) { await initPromise; initDone = true; }
   app(req, res);
 };
