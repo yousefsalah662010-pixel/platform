@@ -5,8 +5,8 @@ const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const path = require('path');
 
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
+const ADMIN_USER = process.env.ADMIN_USER || 'yousef salah';
+const ADMIN_PASS = process.env.ADMIN_PASS || '##Hh506080Hh##';
 const PORT = process.env.PORT || 3000;
 
 if (!process.env.DATABASE_URL) {
