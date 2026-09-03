@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>منصة يوسف صلاح التعليمية</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1e3a8a">
+<link rel="icon" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Cairo',sans-serif; }
@@ -34,17 +39,23 @@
   header { background:#1e3a8a; position:sticky; top:0; z-index:100; box-shadow:0 4px 15px rgba(0,0,0,.15); }
   .headerInner { max-width:1200px; margin:auto; padding:12px 20px; display:flex; align-items:center;
     justify-content:space-between; flex-wrap:wrap; gap:10px; }
-  .logo { color:#fff; font-weight:900; font-size:20px; cursor:pointer; }
+  .logo { color:#fff; font-weight:900; font-size:20px; cursor:pointer; display:flex; align-items:center; gap:10px; }
   .logo span { color:#fbbf24; }
+  .logo img { width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid #fbbf24; }
   nav { display:flex; gap:5px; flex-wrap:wrap; }
   nav a { color:#dbeafe; text-decoration:none; padding:8px 14px; border-radius:8px; font-size:14px;
-    font-weight:600; cursor:pointer; }
+    font-weight:600; cursor:pointer; position:relative; }
   nav a:hover { background:rgba(255,255,255,.15); color:#fff; }
+  .nbadge { position:absolute; top:-2px; left:-2px; background:#dc2626; color:#fff; font-size:10px;
+    font-weight:900; min-width:18px; height:18px; border-radius:10px; display:flex; align-items:center;
+    justify-content:center; padding:0 4px; }
 
   .hero { max-width:1200px; margin:auto; padding:60px 20px; display:flex; align-items:center; gap:40px; }
   .heroText { flex:1; }
   .heroText h1 { font-size:42px; color:#1e3a8a; margin-bottom:15px; }
   .heroText p { font-size:18px; color:#475569; line-height:1.9; white-space:pre-line; }
+  .heroImg img { width:320px; height:380px; object-fit:cover; border-radius:20px;
+    box-shadow:0 15px 40px rgba(30,58,138,.3); }
   .imgPlaceholder { width:320px; height:380px; background:linear-gradient(135deg,#3b82f6,#1e3a8a);
     border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center;
     color:#fff; font-size:18px; font-weight:700; box-shadow:0 15px 40px rgba(30,58,138,.3); text-align:center; }
@@ -82,10 +93,15 @@
     font-weight:700; font-size:14px; margin-top:12px; }
 
   .profileCard { background:#fff; border-radius:18px; padding:35px; box-shadow:0 8px 25px rgba(0,0,0,.08);
-    max-width:650px; margin:auto; }
-  .profileRow { display:flex; justify-content:space-between; padding:14px 5px; border-bottom:1px solid #f1f5f9; }
+    max-width:650px; margin:auto; text-align:center; }
+  .profileRow { display:flex; justify-content:space-between; padding:14px 5px; border-bottom:1px solid #f1f5f9; text-align:right; }
   .profileRow .lbl { font-weight:700; color:#64748b; }
   .profileRow .val { font-weight:700; }
+  .avatar { width:120px; height:120px; border-radius:50%; object-fit:cover; margin:0 auto 12px;
+    border:4px solid #1e3a8a; display:block; }
+  .avatarPh { width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#1e3a8a);
+    color:#fff; display:flex; align-items:center; justify-content:center; font-size:50px; margin:0 auto 12px; }
+  .picInput { display:block; margin:0 auto 20px; font-size:13px; }
 
   .msgBox { max-width:650px; margin:auto; }
   .msgBox textarea { width:100%; min-height:130px; padding:14px; border:2px solid #e2e8f0; border-radius:12px;
@@ -94,6 +110,14 @@
   .replyCard .q { background:#eff6ff; padding:12px; border-radius:10px; margin-bottom:12px; font-size:14px; }
   .replyCard .a { background:#f0fdf4; padding:12px; border-radius:10px; font-size:14px; border-right:4px solid #10b981; }
   .noReply { text-align:center; color:#94a3b8; padding:40px; font-size:16px; }
+
+  #notifPanel { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:300; }
+  .notifBox { max-width:470px; margin:60px auto; background:#fff; border-radius:16px; padding:22px;
+    max-height:75vh; overflow-y:auto; }
+  .notifBox h3 { color:#1e3a8a; margin-bottom:14px; }
+  .notifRow { background:#f8fafc; border-radius:10px; padding:12px; margin-bottom:8px; font-size:14px; line-height:1.8; }
+  .notifRow.unread { background:#eff6ff; border-right:4px solid #1e3a8a; }
+  .notifRow .tm { font-size:11px; color:#94a3b8; margin-top:4px; }
 
   #coursePage { position:fixed; inset:0; background:#f1f5f9; z-index:200; overflow-y:auto; }
   .courseTop { background:linear-gradient(135deg,#1e3a8a,#3b82f6); color:#fff; padding:20px;
@@ -104,7 +128,6 @@
   .btnClose { background:rgba(255,255,255,.2); color:#fff; border:none; padding:10px 20px; border-radius:8px;
     font-family:'Cairo'; font-weight:700; cursor:pointer; }
   .timer { background:rgba(255,255,255,.15); padding:8px 18px; border-radius:25px; font-weight:700; font-size:14px; }
-  .timer span { color:#fbbf24; }
   .cpTabs { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
   .cpTabs button { padding:9px 20px; border:none; border-radius:8px; font-family:'Cairo'; font-weight:700;
     font-size:14px; background:rgba(255,255,255,.15); color:#dbeafe; cursor:pointer; }
@@ -112,13 +135,18 @@
   .lessons { max-width:1000px; margin:auto; padding:30px 20px; }
   .lesson { background:#fff; border-radius:16px; padding:20px; margin-bottom:20px; box-shadow:0 5px 15px rgba(0,0,0,.06); }
   .lesson h4 { color:#1e3a8a; margin-bottom:12px; font-size:18px; }
+  .watchBadge { color:#059669; font-weight:900; font-size:13px; }
+  .videoWrap { margin-top:10px; }
   .videoBox { width:100%; aspect-ratio:16/9; background:#0f172a; border-radius:12px; display:flex;
     flex-direction:column; align-items:center; justify-content:center; color:#64748b; font-size:16px;
     font-weight:700; margin-bottom:12px; }
   .videoBox .icon { font-size:50px; margin-bottom:10px; }
   .lesson p { color:#475569; font-size:14px; line-height:1.8; }
+  .btnLesson { padding:10px 25px; background:#1e3a8a; color:#fff; border:none; border-radius:8px;
+    font-family:'Cairo'; font-weight:700; cursor:pointer; font-size:14px; }
+  .progressBar { background:#e2e8f0; border-radius:20px; height:12px; overflow:hidden; margin-bottom:20px; }
+  .progressBar div { background:linear-gradient(135deg,#059669,#10b981); height:100%; }
 
-  /* امتحان */
   .examIntro { background:#fff; border-radius:16px; padding:30px; max-width:700px; margin:auto;
     text-align:center; box-shadow:0 5px 15px rgba(0,0,0,.06); }
   .examIntro h3 { color:#1e3a8a; font-size:24px; margin-bottom:10px; }
@@ -132,7 +160,6 @@
     border-radius:10px; margin-bottom:8px; cursor:pointer; transition:.2s; font-size:14px; }
   .optRow:hover { border-color:#93c5fd; }
   .optRow.sel { border-color:#1e3a8a; background:#eff6ff; }
-  .optRow input[type=radio] { accent-color:#1e3a8a; }
   .ordRow { display:flex; align-items:center; gap:10px; padding:11px 14px; background:#f8fafc;
     border:2px solid #e2e8f0; border-radius:10px; margin-bottom:8px; font-size:14px; cursor:grab; }
   .ordRow .num { background:#1e3a8a; color:#fff; width:26px; height:26px; border-radius:50%;
@@ -143,8 +170,6 @@
     background:linear-gradient(135deg,#059669,#10b981); color:#fff; border:none; border-radius:12px;
     font-family:'Cairo'; font-weight:900; font-size:18px; cursor:pointer; }
 
-  /* لوحة شرف */
-  .podium { max-width:700px; margin:auto; }
   .honorRow { background:#fff; border-radius:14px; padding:16px 20px; margin-bottom:12px;
     display:flex; align-items:center; gap:15px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
   .honorRow .rank { font-size:24px; width:45px; text-align:center; font-weight:900; flex-shrink:0; }
@@ -155,6 +180,7 @@
   .honorRow.r1 { background:linear-gradient(135deg,#fef9c3,#fde68a); }
   .honorRow.r2 { background:linear-gradient(135deg,#f1f5f9,#e2e8f0); }
   .honorRow.r3 { background:linear-gradient(135deg,#ffedd5,#fed7aa); }
+  .podium { max-width:700px; margin:auto; }
 
   .pdfLink { display:inline-block; margin-top:8px; background:#eff6ff; color:#1e3a8a; font-weight:700;
     padding:8px 18px; border-radius:8px; text-decoration:none; font-size:13px; }
@@ -171,7 +197,7 @@
 
 <div id="authScreen">
   <div class="authBox">
-    <h1>منصتي التعليمية</h1>
+    <h1>📚 منصة يوسف صلاح</h1>
     <p class="sub">منصة تعليمية للطلاب - تعلم معنا بسهولة</p>
     <div class="tabs">
       <button id="tabLogin" class="active" onclick="switchTab('login')">تسجيل الدخول</button>
@@ -219,8 +245,12 @@
 <div id="app" class="hidden">
   <header>
     <div class="headerInner">
-      <div class="logo" onclick="goTo('home')">يوسف <span>صلاح</span></div>
+      <div class="logo" onclick="goTo('home')">
+        <img id="headerPic" src="/icon.svg" alt="">
+        <span style="color:#fff;">يوسف <span style="color:#fbbf24;">صلاح</span></span>
+      </div>
       <nav>
+        <a onclick="openNotifs()" title="الإشعارات">🔔<span id="nBadge" class="nbadge hidden"></span></a>
         <a onclick="goTo('home')">من هو يوسف صلاح</a>
         <a onclick="goTo('courses')">الكورسات</a>
         <a onclick="goTo('books')">الكتب 📖</a>
@@ -236,19 +266,11 @@
   <section id="home" class="hero">
     <div class="heroText">
       <h1>أهلاً بك 👋</h1>
-      <p id="heroAbout">​مرحباً بكم! أنا يوسف صلاح
-​رحلتي في عالم التكنولوجيا بدأت بشغف كبير لتعلم البرمجة؛ حيث تدربت وتعلمت لغات أساسية مثل HTML وCSS وJavaScript، وقمت ببناء العديد من المواقع والمنصات الرقمية بنفسي—وهذه المنصة التي بين أيديكم هي إحدى ثمار هذا العمل والتطوير المستمر.
-​خلال مسيرتي، لم أكتفِ بالتعلم فقط، بل قمت بتعليم العديد من الطلاب ومساعدتهم على دخول عالم البرمجة، وحققنا معاً نتائج ومميزات رائعة!
-​ماذا ننتظر في هذه الرحلة؟
-سنخوض معاً رحلة ممتعة وشيقة جداً في هذا المنهج. وبنهايته —بإذن الله— ستكونون قادرين على:
-​بناء وتطوير المواقع الإلكترونية.
-​إنشاء التطبيقات والالعاب.
-​اكتساب مهارات جانبية هامة مثل تحسين اللغة الإنجليزية ولغات برمجية مختلفة تدعم بناء تطبيقات الويب والألعاب.
-​هدفنا الأساسي من هذه المنصة هو تحويل الفكر من مجرد التسلية إلى الإبداع؛ عليك أن تصنع اللعبة لا أن تكتفي بلعبها فقط، لتكون منتجاً وفاعلاً في هذا العالم، لا مجرد مستهلك!
-​أتمنى لكم رحلة تعليمية ملهمة ومملوءة بالإنجازات</p>
+      <p id="heroAbout">أنا يوسف صلاح، معلم متخصص...
+اكتب خبراتك هنا.</p>
     </div>
     <div class="heroImg">
-      <img src="photo.jpg" style="width:320px;height:380px;object-fit:cover;border-radius:20px;box-shadow:0 15px 40px rgba(30,58,138,.3);">
+      <img src="photo.jpg" alt="يوسف صلاح" onerror="this.outerHTML='<div class=imgPlaceholder><div class=icon>👤</div>مكان صورتك</div>'">
     </div>
   </section>
 
@@ -289,6 +311,15 @@
   <footer>© 2025 منصة يوسف صلاح التعليمية - جميع الحقوق محفوظة</footer>
 </div>
 
+<!-- لوحة الإشعارات -->
+<div id="notifPanel" class="hidden" onclick="if(event.target===this)closeNotifs()">
+  <div class="notifBox">
+    <h3>🔔 الإشعارات</h3>
+    <div id="notifList"></div>
+    <button class="btnMain" style="margin-top:10px;" onclick="closeNotifs()">إغلاق</button>
+  </div>
+</div>
+
 <!-- صفحة الكورس -->
 <div id="coursePage" class="hidden">
   <div class="courseTop">
@@ -313,7 +344,7 @@
 
 <script>
 let me = null, courses = [], timerInt = null, examInt = null,
-    examAnswers = {}, examData = null, examStart = 0, currentCourse = null;
+    examAnswers = {}, examData = null, examStart = 0, currentCourse = null, currentViewed = [];
 const WA_NUMBER = '201283674859';
 
 const esc = s => String(s??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -361,9 +392,36 @@ async function doLogout(){ await fetch('/api/logout',{method:'POST'}); location.
 function showApp(){
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  renderProfile(); loadReplies(); loadBooks();
+  renderProfile(); loadReplies(); loadBooks(); loadNotifs();
+  setInterval(loadNotifs, 25000);
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
 
+/* ═══ الإشعارات ═══ */
+async function loadNotifs(){
+  try {
+    const d = await fetch('/api/notifications').then(r=>r.json());
+    const b = document.getElementById('nBadge');
+    if(d.unread > 0){ b.textContent = d.unread > 99 ? '99+' : d.unread; b.classList.remove('hidden'); }
+    else b.classList.add('hidden');
+  } catch(e){}
+}
+async function openNotifs(){
+  document.getElementById('notifPanel').classList.remove('hidden');
+  const d = await fetch('/api/notifications').then(r=>r.json());
+  document.getElementById('notifList').innerHTML = d.rows.length ? d.rows.map(n=>
+    `<div class="notifRow ${n.read?'':'unread'}">${esc(n.text)}
+      <div class="tm">${new Date(n.created_at).toLocaleString('ar-EG')}</div></div>`).join('')
+    : '<div class="noReply">مفيش إشعارات لسه</div>';
+  await fetch('/api/notifications/read',{method:'POST'});
+  document.getElementById('nBadge').classList.add('hidden');
+}
+function closeNotifs(){
+  document.getElementById('notifPanel').classList.add('hidden');
+  loadNotifs();
+}
+
+/* ═══ الملف الشخصي + الصورة ═══ */
 function renderProfile(){
   const u = me.user;
   const enrolls = me.enrollments.map(e=>{
@@ -378,15 +436,42 @@ function renderProfile(){
       <span class="val">✅ مفعّل</span></div>`;
   }).join('');
   document.getElementById('profileCard').innerHTML = `
+    ${u.profile_pic ? `<img src="${u.profile_pic}" class="avatar" alt="">` : `<div class="avatarPh">👤</div>`}
+    <input type="file" accept="image/*" class="picInput" onchange="pickPic(this)">
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:15px;">محاولاتك المتبقية للتراكم: <b style="color:${u.attempts_left>1?'#059669':'#dc2626'}">${u.attempts_left ?? 3}</b></div>
     <div class="profileRow"><span class="lbl">الاسم</span><span class="val">${esc(u.first_name+' '+u.last_name)}</span></div>
     <div class="profileRow"><span class="lbl">رقم الهاتف</span><span class="val">${esc(u.phone)}</span></div>
     <div class="profileRow"><span class="lbl">هاتف ولي الأمر</span><span class="val">${esc(u.parent_phone)}</span></div>
     <div class="profileRow"><span class="lbl">البريد الإلكتروني</span><span class="val">${esc(u.email)}</span></div>
     <div class="profileRow"><span class="lbl">السنة الدراسية</span><span class="val">${esc(u.grade)}</span></div>
     <div class="profileRow"><span class="lbl">النوع</span><span class="val">${esc(u.gender)}</span></div>
-    <div class="profileRow"><span class="lbl">تاريخ التسجيل</span><span class="val">${esc(u.created_at)}</span></div>
-    ${enrolls?'<h3 style="margin:20px 0 5px;color:#1e3a8a;">اشتراكاتي:</h3>'+enrolls:''}
-    ${myBooks?'<h3 style="margin:20px 0 5px;color:#1e3a8a;">كتبي:</h3>'+myBooks:''}`;
+    ${enrolls?'<h3 style="margin:20px 0 5px;color:#1e3a8a;text-align:right;">اشتراكاتي:</h3>'+enrolls:''}
+    ${myBooks?'<h3 style="margin:20px 0 5px;color:#1e3a8a;text-align:right;">كتبي:</h3>'+myBooks:''}`;
+  const hp = document.getElementById('headerPic');
+  if(u.profile_pic) hp.src = u.profile_pic;
+}
+
+function pickPic(input){
+  const file = input.files[0];
+  if(!file) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    const img = new Image();
+    img.onload = async () => {
+      const c = document.createElement('canvas');
+      c.width = 300; c.height = 300;
+      const min = Math.min(img.width, img.height);
+      c.getContext('2d').drawImage(img, (img.width-min)/2, (img.height-min)/2, min, min, 0, 0, 300, 300);
+      const data = c.toDataURL('image/jpeg', .75);
+      const r = await fetch('/api/upload-pic',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({pic:data})});
+      const d = await r.json();
+      if(d.ok) renderProfile();
+      else alert(d.msg || 'فشل رفع الصورة');
+    };
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(file);
 }
 
 let allBooks = [];
@@ -494,7 +579,8 @@ async function activate(courseId){
   else { msg.style.color='#b91c1c'; msg.textContent='❌ '+esc(d.msg); }
 }
 
-function lessonHTML(l){
+/* ═══ الدروس مع علامة ✅ ═══ */
+function lessonHTML(l, viewed){
   let media = `<div class="videoBox"><div class="icon">🎬</div>مكان الفيديو — هيتضاف قريب</div>`;
   if(l.video_url){
     const m = l.video_url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
@@ -502,7 +588,34 @@ function lessonHTML(l){
       frameborder="0" allowfullscreen style="border:none;border-radius:12px;"></iframe>`;
     else media = `<video controls style="width:100%;border-radius:12px;"><source src="${esc(l.video_url)}"></video>`;
   }
-  return `<div class="lesson"><h4>${esc(l.title)}</h4>${media}${l.description?'<p>'+esc(l.description)+'</p>':''}</div>`;
+  return `<div class="lesson">
+    <h4>${viewed?'<span class="watchBadge">✅ تم السماع</span> — ':''}${esc(l.title)}</h4>
+    <div id="vw-${l.id}" class="videoWrap hidden">${media}${l.description?'<p>'+esc(l.description)+'</p>':''}</div>
+    <button class="btnLesson" id="btn-${l.id}" onclick="openLesson(${l.id}, ${viewed?1:0})">▶️ افتح الدرس</button>
+  </div>`;
+}
+
+async function openLesson(id, already){
+  document.getElementById('vw-'+id).classList.remove('hidden');
+  document.getElementById('btn-'+id).classList.add('hidden');
+  if(!already){
+    await fetch('/api/lesson-viewed',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lesson_id:id})});
+    if(!currentViewed.includes(id)) currentViewed.push(id);
+    renderLessons();
+  }
+}
+
+function renderLessons(){
+  const box = document.getElementById('cpLessons');
+  const total = courseData.length;
+  const done = courseData.filter(l=>currentViewed.includes(l.id)).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  box.innerHTML = `<div style="margin-bottom:15px;font-weight:700;color:#1e3a8a;text-align:center;">
+      أنت سمّعت ${done} من ${total} درس (${pct}%)</div>
+    <div class="progressBar"><div style="width:${pct}%"></div></div>` +
+    (courseData.length ? courseData.map(l=>lessonHTML(l, currentViewed.includes(l.id))).join('')
+      : '<div class="noReply">مفيش دروس لسه</div>');
 }
 
 function cpTab(t){
@@ -514,6 +627,7 @@ function cpTab(t){
   if(t==='honor') loadHonor();
 }
 
+let courseData = [];
 async function openCourse(id){
   currentCourse = id;
   const r = await fetch('/api/course/'+id);
@@ -521,29 +635,18 @@ async function openCourse(id){
   const d = await r.json();
   const c = courses.find(x=>x.id===id);
   document.getElementById('cpTitle').textContent = c.name;
-  document.getElementById('cpLessons').innerHTML = d.lessons.length
-    ? d.lessons.map(lessonHTML).join('')
-    : '<div class="noReply">مفيش دروس لسه</div>';
+  courseData = d.lessons;
+  currentViewed = d.viewed || [];
+  renderLessons();
   document.getElementById('coursePage').classList.remove('hidden');
-  startTimer(d.expires_at);
   cpTab('lessons');
   window.scrollTo(0,0);
 }
 
-function startTimer(expires){
-  clearInterval(timerInt);
-  const el = document.getElementById('cpTitle');
-  function tick(){
-    const diff = new Date(expires) - new Date();
-    if(diff <= 0){ el.title='انتهى الاشتراك'; clearInterval(timerInt); return; }
-  }
-  tick();
-}
-
 function closeCourse(){ clearInterval(timerInt); clearInterval(examInt);
-  document.getElementById('coursePage').classList.add('hidden'); }
+  document.getElementById('coursePage').classList.add('hidden'); loadCourses(); }
 
-/* ═══════ الامتحان ═══════ */
+/* ═══ الامتحان ═══ */
 const typeNames = {mcq:'اختيار من متعدد', truefalse:'صح وغلط', order:'ترتيب', essay:'مقالي'};
 
 async function loadExam(){
@@ -565,7 +668,6 @@ async function loadExam(){
       <p>درجتك الحالية: <b>${examData.score}</b>${examData.essayPending?'<br><small style="color:#d97706;">فيه سؤال مقالي هيصححه المدير — الدرجة النهائية تظهر في لوحة الشرف</small>':''}</p></div>`;
     return;
   }
-  // وضع الامتحان
   examAnswers = {}; examStart = Date.now();
   box.innerHTML = `
     <div class="examIntro" style="margin-bottom:20px;">
@@ -581,7 +683,7 @@ function beginExam(){
   document.getElementById('examQuestions').classList.remove('hidden');
   renderExamQuestions();
   let left = examData.duration * 60;
-  const tEl = document.getElementById('cpTimer');
+  const tEl = document.getElementById('cpTitle');
   examInt = setInterval(()=>{
     left--;
     if(left<=0){ clearInterval(examInt); submitExam(true); return; }
@@ -632,7 +734,6 @@ function dropOrd(e, qid){
   e.preventDefault();
   const cont = document.getElementById('ord-'+qid);
   if(!dragEl || !cont || dragEl.parentElement!==cont) return;
-  const rows = [...cont.children];
   const target = e.target.closest('.ordRow') || cont.lastElementChild;
   cont.insertBefore(dragEl, target === dragEl ? null : (target.nextElementSibling || null));
   if(target === dragEl) cont.insertBefore(dragEl, null);
@@ -660,7 +761,7 @@ async function submitExam(auto){
   }
 }
 
-/* ═══════ لوحة الشرف ═══════ */
+/* ═══ لوحة الشرف ═══ */
 async function loadHonor(){
   const box = document.getElementById('cpHonor');
   box.innerHTML = '<div class="noReply">جاري التحميل...</div>';
@@ -681,7 +782,7 @@ async function loadHonor(){
       </div>`).join('') + `</div>`;
 }
 
-/* ═══════ الدعم ═══════ */
+/* ═══ الدعم ═══ */
 async function sendSupport(){
   const t = document.getElementById('supportText').value.trim();
   if(!t) return document.getElementById('supportMsg').innerHTML='<div class="error">اكتب رسالتك الأول</div>';
