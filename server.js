@@ -5,8 +5,8 @@ const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const path = require('path');
 
-const ADMIN_USER = process.env.ADMIN_USER || 'yousef salah';
-const ADMIN_PASS = process.env.ADMIN_PASS || '##Hh506080Hh##';
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const PORT = process.env.PORT || 3000;
 
 if (!process.env.DATABASE_URL) {
@@ -42,7 +42,6 @@ async function initDB(){
   await pool.query(`CREATE TABLE IF NOT EXISTS messages(
     id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
     reply TEXT, created_at TIMESTAMP DEFAULT NOW(), replied_at TEXT)`);
-  // ── جديد v2 ──
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled INTEGER DEFAULT 0`);
   await pool.query(`CREATE TABLE IF NOT EXISTS books(
     id SERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT,
@@ -81,7 +80,6 @@ function requireAdmin(req,res,next){
   next();
 }
 
-// ═══════════ حسابات الطلاب ═══════════
 app.post('/api/signup', async (req,res)=>{
   const {first,last,phone,parent,email,pass,grade,gender} = req.body;
   if(!first||!last||!phone||!parent||!email||!pass||!grade||!gender)
@@ -124,7 +122,6 @@ app.get('/api/me', requireLogin, async (req,res)=>{
   res.json({user: cleanUser(u), enrollments: enr.rows, books: bk.rows});
 });
 
-// ═══════════ الكورسات ═══════════
 app.get('/api/courses', async (req,res)=>{
   res.json((await pool.query('SELECT * FROM courses ORDER BY id')).rows);
 });
@@ -155,7 +152,6 @@ app.get('/api/course/:id', requireLogin, async (req,res)=>{
   res.json({lessons, expires_at: enr.expires_at});
 });
 
-// ═══════════ الامتحانات (للطلاب) ═══════════
 app.get('/api/exam/:courseId', requireLogin, async (req,res)=>{
   const courseId = Number(req.params.courseId);
   const enr = (await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId])).rows[0];
@@ -220,7 +216,6 @@ app.get('/api/exam/:courseId/honor', async (req,res)=>{
   res.json({status:'results', examTitle: exam.title, results: rows});
 });
 
-// ═══════════ الكتب ═══════════
 app.get('/api/books', async (req,res)=>{
   res.json((await pool.query('SELECT * FROM books ORDER BY id DESC')).rows);
 });
@@ -234,7 +229,6 @@ app.post('/api/activate-book', requireLogin, async (req,res)=>{
   res.json({ok:true});
 });
 
-// ═══════════ الدعم ═══════════
 app.post('/api/support', requireLogin, async (req,res)=>{
   const text = (req.body.text||'').trim();
   if(!text) return res.json({ok:false});
@@ -245,7 +239,6 @@ app.get('/api/my-messages', requireLogin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM messages WHERE user_id=$1 ORDER BY id DESC',[req.session.userId])).rows);
 });
 
-// ═══════════ لوحة المدير ═══════════
 app.post('/api/admin/login', (req,res)=>{
   if(req.body.username===ADMIN_USER && req.body.password===ADMIN_PASS){
     req.session.admin = true; return res.json({ok:true});
@@ -313,7 +306,6 @@ app.get('/api/admin/lessons', requireAdmin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM lessons WHERE course_id=$1 ORDER BY id',[Number(req.query.course_id)])).rows);
 });
 
-// ─── الكتب (مدير) ───
 app.post('/api/admin/books', requireAdmin, async (req,res)=>{
   const {title,description,price,emoji,pdf_url} = req.body;
   if(!title) return res.json({ok:false,msg:'اكتب اسم الكتاب'});
@@ -329,7 +321,6 @@ app.post('/api/admin/books/delete', requireAdmin, async (req,res)=>{
   res.json({ok:true});
 });
 
-// ─── الامتحانات (مدير) ───
 app.get('/api/admin/exam', requireAdmin, async (req,res)=>{
   const courseId = Number(req.query.course_id);
   const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
@@ -391,5 +382,3 @@ initDB().then(()=>{
   console.log('❌ مشكلة في قاعدة البيانات: ' + e.message);
   process.exit(1);
 });
-
-
