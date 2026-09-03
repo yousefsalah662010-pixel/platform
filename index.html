@@ -198,7 +198,7 @@
 
 <div id="authScreen">
   <div class="authBox">
-    <h1>منصتي التعليمية</h1>
+    <h1>📚 منصة يوسف صلاح</h1>
     <p class="sub">منصة تعليمية للطلاب - تعلم معنا بسهولة</p>
     <div class="tabs">
       <button id="tabLogin" class="active" onclick="switchTab('login')">تسجيل الدخول</button>
@@ -207,33 +207,33 @@
 
     <form id="loginForm" onsubmit="event.preventDefault(); doLogin(event); return false;">
       <div id="loginMsg"></div>
-      <div class="field"><label>البريد الإلكتروني</label><input type="email" id="loginEmail" required></div>
-      <div class="field"><label>الرقم السري</label><input type="password" id="loginPass" required></div>
+      <div class="field"><label>البريد الإلكتروني</label><input type="email" id="loginEmail" autocomplete="email" required></div>
+      <div class="field"><label>الرقم السري</label><input type="password" id="loginPass" autocomplete="current-password" required></div>
       <button class="btnMain" type="submit">دخول</button>
     </form>
 
-   <form id="signupForm" class="hidden" onsubmit="event.preventDefault(); doSignup(event); return false;">
+    <form id="signupForm" class="hidden" onsubmit="event.preventDefault(); doSignup(event); return false;">
       <div id="signupMsg"></div>
       <div class="row2">
-        <div class="field"><label>الاسم الأول *</label><input type="text" id="suFirst" required></div>
-        <div class="field"><label>الاسم الثاني *</label><input type="text" id="suLast" required></div>
+        <div class="field"><label>الاسم الأول *</label><input type="text" id="suFirst" autocomplete="given-name" required></div>
+        <div class="field"><label>الاسم الثاني *</label><input type="text" id="suLast" autocomplete="family-name" required></div>
       </div>
       <div class="row2">
-        <div class="field"><label>رقم الهاتف *</label><input type="tel" id="suPhone" required></div>
-        <div class="field"><label>رقم هاتف ولي الأمر *</label><input type="tel" id="suParent" required></div>
+        <div class="field"><label>رقم الهاتف *</label><input type="tel" id="suPhone" autocomplete="tel" required></div>
+        <div class="field"><label>رقم هاتف ولي الأمر *</label><input type="tel" id="suParent" autocomplete="tel" required></div>
       </div>
-      <div class="field"><label>البريد الإلكتروني *</label><input type="email" id="suEmail" required></div>
-      <div class="field"><label>الرقم السري *</label><input type="password" id="suPass" minlength="6" required></div>
+      <div class="field"><label>البريد الإلكتروني *</label><input type="email" id="suEmail" autocomplete="email" required></div>
+      <div class="field"><label>الرقم السري *</label><input type="password" id="suPass" autocomplete="new-password" minlength="6" required></div>
       <div class="row2">
         <div class="field"><label>السنة الدراسية *</label>
           <select id="suGrade" required>
-            <option value="">اختر...</option>
+            <option value="" selected disabled>اختر...</option>
             <option>أولى ثانوي</option><option>تانية ثانوي</option><option>تالتة ثانوي</option>
           </select>
         </div>
         <div class="field"><label>النوع *</label>
           <select id="suGender" required>
-            <option value="">اختر...</option>
+            <option value="" selected disabled>اختر...</option>
             <option>ذكر</option><option>أنثى</option>
           </select>
         </div>
@@ -242,7 +242,6 @@
     </form>
   </div>
 </div>
-
 <div id="app" class="hidden">
   <header>
     <div class="headerInner">
