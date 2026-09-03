@@ -1,16 +1,15 @@
-// ═══════════ منصة يوسف صلاح - v3 (إشعارات + متابعة دروس + صورة شخصية) ═══════════
+// ═══════════ منصة يوسف صلاح - v3.1 (جلسات في قاعدة البيانات — تشتغل على أي استضافة) ═══════════
 const express = require('express');
-const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { Pool } = require('pg');
-const path = require('path');
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const PORT = process.env.PORT || 3000;
 
 if (!process.env.DATABASE_URL) {
-  console.log('⚠️ النسخة دي للنشر — محتاجة DATABASE_URL');
+  console.log('⚠️ محتاجة DATABASE_URL');
   process.exit(1);
 }
 
@@ -59,7 +58,6 @@ async function initDB(){
     answers TEXT, score REAL DEFAULT 0, essay_score REAL DEFAULT 0,
     essay_pending INTEGER DEFAULT 0, time_taken INTEGER DEFAULT 0,
     submitted_at TIMESTAMP DEFAULT NOW(), UNIQUE(exam_id, user_id))`);
-  // ── جديد v3 ──
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attempts_left INTEGER DEFAULT 3`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_call INTEGER DEFAULT 0`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT`);
@@ -69,13 +67,16 @@ async function initDB(){
   await pool.query(`CREATE TABLE IF NOT EXISTS lesson_views(
     user_id INTEGER NOT NULL, lesson_id INTEGER NOT NULL,
     viewed_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(user_id, lesson_id))`);
+  // ── جلسات في قاعدة البيانات (تشتغل على Vercel و Railway وأي حاجة) ──
+  await pool.query(`CREATE TABLE IF NOT EXISTS sessions(
+    token TEXT PRIMARY KEY, user_id INTEGER, admin INTEGER DEFAULT 0,
+    expires TIMESTAMPTZ NOT NULL)`);
 }
 
 async function notify(userId, text){
   await pool.query('INSERT INTO notifications(user_id,text) VALUES($1,$2)',[userId,text]);
 }
 
-// ── فحص تراكم الدروس: لو راكم درسين يحصل خصم محاولات/تبليغ/تعطيل ──
 async function checkAccumulation(userId, courseId){
   const total = (await pool.query('SELECT COUNT(*)::int AS n FROM lessons WHERE course_id=$1',[courseId])).rows[0].n;
   const viewed = (await pool.query(`SELECT COUNT(*)::int AS n FROM lesson_views lv
@@ -97,20 +98,40 @@ async function checkAccumulation(userId, courseId){
 
 const app = express();
 app.use(express.json());
-app.use(session({
-  secret: 'youssef-change-this-secret-951',
-  resave: false, saveUninitialized: false,
-  cookie: { maxAge: 7*24*60*60*1000 }
-}));
-app.use(express.static(__dirname));
 
-const cleanUser = u => { const {password, ...rest} = u; return rest; };
+// ── نظام الجلسات (كوكي + قاعدة بيانات) ──
+function getToken(req){
+  const m = (req.headers.cookie||'').match(/(?:^|;\s*)sid=([^;]+)/);
+  return m ? m[1] : null;
+}
+app.use(async (req,res,next)=>{
+  try {
+    const t = getToken(req);
+    req.sess = null;
+    if(t){
+      const r = await pool.query('SELECT * FROM sessions WHERE token=$1 AND expires>NOW()',[t]);
+      req.sess = r.rows[0] || null;
+    }
+  } catch(e){ req.sess = null; }
+  next();
+});
+async function createSess(res, userId, admin){
+  const token = crypto.randomBytes(24).toString('hex');
+  await pool.query('DELETE FROM sessions WHERE expires<NOW()');
+  await pool.query("INSERT INTO sessions(token,user_id,admin,expires) VALUES($1,$2,$3, NOW()+INTERVAL '7 days')",
+    [token, userId||null, admin?1:0]);
+  res.setHeader('Set-Cookie', `sid=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
+}
+
 function requireLogin(req,res,next){
-  if(!req.session.userId) return res.status(401).json({error:'لازم تسجل دخول الأول'});
+  if(!req.sess || !req.sess.user_id)
+    return res.status(401).json({ok:false,msg:'انتهت الجلسة — سجل دخول تاني',error:'لازم تسجل دخول الأول'});
+  req.session = { userId: req.sess.user_id };
   next();
 }
 function requireAdmin(req,res,next){
-  if(!req.session.admin) return res.status(401).json({error:'صلاحيات مدير مطلوبة'});
+  if(!req.sess || !req.sess.admin)
+    return res.status(401).json({ok:false,msg:'انتهت جلسة المدير — سجل دخول تاني',error:'صلاحيات مدير مطلوبة'});
   next();
 }
 
@@ -128,7 +149,7 @@ app.post('/api/signup', async (req,res)=>{
       `INSERT INTO users(first_name,last_name,phone,parent_phone,email,password,grade,gender)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
       [first.trim(),last.trim(),phone.trim(),parent.trim(),em,bcrypt.hashSync(pass,10),grade,gender]);
-    req.session.userId = ins.rows[0].id;
+    await createSess(res, ins.rows[0].id, false);
     res.json({ok:true});
   } catch(e){ res.json({ok:false,msg:'حصل خطأ، حاول تاني'}); }
 });
@@ -141,23 +162,27 @@ app.post('/api/login', async (req,res)=>{
     if(!user || !bcrypt.compareSync(req.body.pass||'', user.password))
       return res.json({ok:false,msg:'الإيميل أو الرقم السري غلط'});
     if(user.disabled) return res.json({ok:false,msg:'تم تعطيل حسابك — تواصل مع الدعم'});
-    req.session.userId = user.id;
+    await createSess(res, user.id, false);
     res.json({ok:true});
   } catch(e){ res.json({ok:false,msg:'حصل خطأ، حاول تاني'}); }
 });
 
-app.post('/api/logout', (req,res)=> req.session.destroy(()=>res.json({ok:true})));
+app.post('/api/logout', async (req,res)=>{
+  const t = getToken(req);
+  if(t) await pool.query('DELETE FROM sessions WHERE token=$1',[t]);
+  res.setHeader('Set-Cookie','sid=; Path=/; HttpOnly; Max-Age=0');
+  res.json({ok:true});
+});
 
 app.get('/api/me', requireLogin, async (req,res)=>{
   const u = (await pool.query('SELECT * FROM users WHERE id=$1',[req.session.userId])).rows[0];
-  if(!u) { req.session.destroy(()=>{}); return res.status(401).json({error:'سجل دخول تاني'}); }
+  if(!u) return res.status(401).json({error:'سجل دخول تاني'});
   if(u.disabled) return res.status(403).json({error:'تم تعطيل حسابك — تواصل مع الدعم'});
   const enr = await pool.query('SELECT course_id, expires_at FROM enrollments WHERE user_id=$1 ORDER BY id',[u.id]);
   const bk = await pool.query('SELECT course_id AS book_id FROM codes WHERE used_by=$1 AND item_type=$2',[u.id,'book']);
   res.json({user: cleanUser(u), enrollments: enr.rows, books: bk.rows});
 });
 
-// ── الصورة الشخصية ──
 app.post('/api/upload-pic', requireLogin, async (req,res)=>{
   const pic = String(req.body.pic||'');
   if(!pic.startsWith('data:image/') || pic.length > 900000)
@@ -208,7 +233,6 @@ app.get('/api/course/:id', requireLogin, async (req,res)=>{
   res.json({lessons, viewed: vw.rows.map(v=>v.lesson_id), expires_at: enr.expires_at});
 });
 
-// ── تعليم الدرس كمسموع ──
 app.post('/api/lesson-viewed', requireLogin, async (req,res)=>{
   const lid = Number(req.body.lesson_id);
   const l = (await pool.query('SELECT * FROM lessons WHERE id=$1',[lid])).rows[0];
@@ -219,7 +243,7 @@ app.post('/api/lesson-viewed', requireLogin, async (req,res)=>{
   res.json({ok:true});
 });
 
-// ═══════════ الامتحانات (للطلاب) ═══════════
+// ═══════════ الامتحانات ═══════════
 app.get('/api/exam/:courseId', requireLogin, async (req,res)=>{
   const courseId = Number(req.params.courseId);
   const enr = (await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId])).rows[0];
@@ -310,13 +334,19 @@ app.get('/api/my-messages', requireLogin, async (req,res)=>{
 });
 
 // ═══════════ لوحة المدير ═══════════
-app.post('/api/admin/login', (req,res)=>{
+app.post('/api/admin/login', async (req,res)=>{
   if(req.body.username===ADMIN_USER && req.body.password===ADMIN_PASS){
-    req.session.admin = true; return res.json({ok:true});
+    await createSess(res, null, true);
+    return res.json({ok:true});
   }
   res.json({ok:false,msg:'بيانات المدير غلط'});
 });
-app.post('/api/admin/logout', (req,res)=>{ req.session.admin=false; res.json({ok:true}); });
+app.post('/api/admin/logout', async (req,res)=>{
+  const t = getToken(req);
+  if(t) await pool.query('DELETE FROM sessions WHERE token=$1',[t]);
+  res.setHeader('Set-Cookie','sid=; Path=/; HttpOnly; Max-Age=0');
+  res.json({ok:true});
+});
 
 app.get('/api/admin/messages', requireAdmin, async (req,res)=>{
   res.json((await pool.query(`SELECT m.*, u.first_name, u.last_name, u.phone, u.email
@@ -467,9 +497,17 @@ app.post('/api/admin/exam/grade', requireAdmin, async (req,res)=>{
   res.json({ok:true});
 });
 
-initDB().then(()=>{
-  app.listen(PORT, ()=> console.log('✅ السيرفر شغال على المنفذ ' + PORT));
-}).catch(e=>{
-  console.log('❌ مشكلة في قاعدة البيانات: ' + e.message);
-  process.exit(1);
-});
+// ── التشغيل: يشتغل على Railway عادي وعلى Vercel كـ Serverless ──
+const initPromise = initDB();
+if(!process.env.VERCEL){
+  initPromise.then(()=>{
+    app.listen(PORT, ()=> console.log('✅ السيرفر شغال على المنفذ ' + PORT));
+  }).catch(e=>{
+    console.log('❌ مشكلة في قاعدة البيانات: ' + e.message);
+    process.exit(1);
+  });
+}
+module.exports = async (req, res) => {
+  await initPromise;
+  app(req, res);
+};
