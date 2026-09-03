@@ -13,9 +13,9 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "server.js" },
     { "src": "/sw.js", "dest": "/sw.js" },
-    { "src": "/app.js", "dest": "/app.js" },
     { "src": "/manifest.json", "dest": "/manifest.json" },
     { "src": "/icon.svg", "dest": "/icon.svg" },
+    { "src": "/app.js", "dest": "/app.js" },
     { "src": "/admin.html", "dest": "/admin.html" },
     { "src": "/photo.jpg", "dest": "/photo.jpg" },
     { "src": "/(.*)", "dest": "/index.html" }
