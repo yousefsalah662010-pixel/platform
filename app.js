@@ -1,457 +1,524 @@
-let me = null, courses = [], timerInt = null, examInt = null,
-    examAnswers = {}, examData = null, examStart = 0, currentCourse = null, currentViewed = [];
-const WA_NUMBER = '201283674859';
+// ═══════════ منصة يوسف صلاح - v3.2 نظيف ═══════════
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const { Pool } = require('pg');
 
-const esc = s => String(s??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const waLink = t => 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(t);
-const goTo = id => { document.getElementById(id).scrollIntoView({behavior:'smooth'}); };
-const fmtTime = s => { const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);
-  return (h?h+' ساعة ':'')+(m?m+' دقيقة ':'')+x+' ثانية'; };
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
+const PORT = process.env.PORT || 3000;
 
-function switchTab(t){
-  document.getElementById('tabLogin').classList.toggle('active', t==='login');
-  document.getElementById('tabSignup').classList.toggle('active', t==='signup');
-  document.getElementById('loginForm').classList.toggle('hidden', t!=='login');
-  document.getElementById('signupForm').classList.toggle('hidden', t!=='signup');
+if (!process.env.DATABASE_URL) {
+  console.log('MISSING DATABASE_URL');
+  process.exit(1);
 }
 
-async function doLogin(e){
-  e.preventDefault();
-  try {
-    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email:loginEmail.value, pass:loginPass.value})});
-    const d = await r.json();
-    if(d.ok) location.reload();
-    else document.getElementById('loginMsg').innerHTML = '<div class="error">'+esc(d.msg)+'</div>';
-  } catch(err){
-    document.getElementById('loginMsg').innerHTML = '<div class="error">السيرفر مش شغال</div>';
-  }
-}
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-async function doSignup(e){
-  e.preventDefault();
-  const body = {first:suFirst.value,last:suLast.value,phone:suPhone.value,parent:suParent.value,
-    email:suEmail.value,pass:suPass.value,grade:suGrade.value,gender:suGender.value};
-  try {
-    const r = await fetch('/api/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const d = await r.json();
-    if(d.ok) location.reload();
-    else document.getElementById('signupMsg').innerHTML = '<div class="error">'+esc(d.msg)+'</div>';
-  } catch(err){
-    document.getElementById('signupMsg').innerHTML = '<div class="error">السيرفر مش شغال</div>';
-  }
-}
-
-async function doLogout(){ await fetch('/api/logout',{method:'POST'}); location.reload(); }
-
-function showApp(){
-  document.getElementById('authScreen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  renderProfile(); loadReplies(); loadBooks(); loadNotifs();
-  setInterval(loadNotifs, 25000);
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
-}
-
-async function loadNotifs(){
-  try {
-    const d = await fetch('/api/notifications').then(r=>r.json());
-    const b = document.getElementById('nBadge');
-    if(d.unread > 0){ b.textContent = d.unread > 99 ? '99+' : d.unread; b.classList.remove('hidden'); }
-    else b.classList.add('hidden');
-  } catch(e){}
-}
-async function openNotifs(){
-  document.getElementById('notifPanel').classList.remove('hidden');
-  const d = await fetch('/api/notifications').then(r=>r.json());
-  document.getElementById('notifList').innerHTML = d.rows.length ? d.rows.map(n=>
-    `<div class="notifRow ${n.read?'':'unread'}">${esc(n.text)}
-      <div class="tm">${new Date(n.created_at).toLocaleString('ar-EG')}</div></div>`).join('')
-    : '<div class="noReply">مفيش إشعارات لسه</div>';
-  await fetch('/api/notifications/read',{method:'POST'});
-  document.getElementById('nBadge').classList.add('hidden');
-}
-function closeNotifs(){
-  document.getElementById('notifPanel').classList.add('hidden');
-  loadNotifs();
-}
-
-function renderProfile(){
-  const u = me.user;
-  const enrolls = me.enrollments.map(e=>{
-    const c = courses.find(x=>x.id===e.course_id);
-    const active = new Date(e.expires_at) > new Date();
-    return `<div class="profileRow"><span class="lbl">${esc(c?c.name:'كورس')}</span>
-      <span class="val">${active?'✅ ساري لـ '+new Date(e.expires_at).toLocaleDateString('ar-EG'):'⌛ منتهي'}</span></div>`;
-  }).join('');
-  const myBooks = (me.books||[]).map(b=>{
-    const bk = allBooks.find(x=>x.id===b.book_id);
-    return `<div class="profileRow"><span class="lbl">📖 ${esc(bk?bk.title:'كتاب')}</span>
-      <span class="val">✅ مفعّل</span></div>`;
-  }).join('');
-  document.getElementById('profileCard').innerHTML = `
-    ${u.profile_pic ? `<img src="${u.profile_pic}" class="avatar" alt="">` : `<div class="avatarPh">👤</div>`}
-    <input type="file" accept="image/*" class="picInput" onchange="pickPic(this)">
-    <div style="font-size:12px;color:#94a3b8;margin-bottom:15px;">محاولاتك المتبقية للتراكم: <b style="color:${u.attempts_left>1?'#059669':'#dc2626'}">${u.attempts_left ?? 3}</b></div>
-    <div class="profileRow"><span class="lbl">الاسم</span><span class="val">${esc(u.first_name+' '+u.last_name)}</span></div>
-    <div class="profileRow"><span class="lbl">رقم الهاتف</span><span class="val">${esc(u.phone)}</span></div>
-    <div class="profileRow"><span class="lbl">هاتف ولي الأمر</span><span class="val">${esc(u.parent_phone)}</span></div>
-    <div class="profileRow"><span class="lbl">البريد الإلكتروني</span><span class="val">${esc(u.email)}</span></div>
-    <div class="profileRow"><span class="lbl">السنة الدراسية</span><span class="val">${esc(u.grade)}</span></div>
-    <div class="profileRow"><span class="lbl">النوع</span><span class="val">${esc(u.gender)}</span></div>
-    ${enrolls?'<h3 style="margin:20px 0 5px;color:#1e3a8a;text-align:right;">اشتراكاتي:</h3>'+enrolls:''}
-    ${myBooks?'<h3 style="margin:20px 0 5px;color:#1e3a8a;text-align:right;">كتبي:</h3>'+myBooks:''}`;
-  const hp = document.getElementById('headerPic');
-  if(u.profile_pic) hp.src = u.profile_pic;
-}
-
-function pickPic(input){
-  const file = input.files[0];
-  if(!file) return;
-  const rd = new FileReader();
-  rd.onload = e => {
-    const img = new Image();
-    img.onload = async () => {
-      const c = document.createElement('canvas');
-      c.width = 300; c.height = 300;
-      const min = Math.min(img.width, img.height);
-      c.getContext('2d').drawImage(img, (img.width-min)/2, (img.height-min)/2, min, min, 0, 0, 300, 300);
-      const data = c.toDataURL('image/jpeg', .75);
-      const r = await fetch('/api/upload-pic',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({pic:data})});
-      const d = await r.json();
-      if(d.ok) renderProfile();
-      else alert(d.msg || 'فشل رفع الصورة');
-    };
-    img.src = e.target.result;
-  };
-  rd.readAsDataURL(file);
-}
-
-let allBooks = [];
-async function loadBooks(){
-  allBooks = await fetch('/api/books').then(r=>r.json());
-  document.getElementById('booksGrid').innerHTML = allBooks.length ? allBooks.map(b=>{
-    const owned = (me.books||[]).some(x=>x.book_id===b.id);
-    let bottom = '';
-    if(owned){
-      bottom = `<div class="unlockedBadge">✅ تفعيلك ساري</div>
-        ${b.pdf_url?`<a class="pdfLink" href="${esc(b.pdf_url)}" target="_blank">⬇️ افتح الكتاب PDF</a>`:'<p style="font-size:12px;color:#94a3b8;margin-top:8px;">الملف هيضاف قريب</p>'}`;
-    } else {
-      bottom = `<div class="codeArea">
-          <label>عندك رمز التفعيل؟</label>
-          <div class="codeRow">
-            <input id="bcode-${b.id}" placeholder="رمز الكتاب">
-            <button onclick="activateBook(${b.id})">تفعيل</button>
-          </div>
-          <div class="codeMsg" id="bmsg-${b.id}"></div>
-        </div>
-        <button class="btnSub" style="margin-top:15px;" onclick="buyBook(${b.id})">💰 شراء الكتاب</button>`;
-    }
-    return `<div class="courseCard">
-      <div class="courseImg" style="background:linear-gradient(135deg,#d97706,#92400e)">${b.emoji||'📖'}</div>
-      <div class="courseBody">
-        <h3>${esc(b.title)}</h3>
-        <p class="desc">${esc(b.description||'')}</p>
-        <div class="price">${b.price} جنيه</div>
-        ${bottom}
-      </div>
-    </div>`;
-  }).join('') : '<div class="noReply">مفيش كتب متاحة لسه</div>';
-}
-
-function buyBook(id){
-  const b = allBooks.find(x=>x.id===id);
-  window.open(waLink(`أنا ${me.user.first_name} أريد شراء كتاب ${b.title}`));
-}
-
-async function activateBook(bookId){
-  const msg = document.getElementById('bmsg-'+bookId);
-  const code = document.getElementById('bcode-'+bookId).value.trim();
-  const r = await fetch('/api/activate-book',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({bookId, code})});
-  const d = await r.json();
-  if(d.ok){ msg.style.color='#166534'; msg.textContent='✅ تم تفعيل الكتاب!'; setTimeout(()=>{loadBooks();renderProfile();},900); }
-  else { msg.style.color='#b91c1c'; msg.textContent='❌ '+esc(d.msg); }
-}
-
-async function loadCourses(){
-  const [cs, m] = await Promise.all([
-    fetch('/api/courses').then(r=>r.json()),
-    fetch('/api/me').then(r=>r.json())
+async function initDB(){
+  const ddl = [
+    `CREATE TABLE IF NOT EXISTS users(
+      id SERIAL PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
+      phone TEXT NOT NULL, parent_phone TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL, grade TEXT NOT NULL, gender TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS courses(
+      id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
+      price INTEGER NOT NULL, emoji TEXT DEFAULT '📚',
+      color TEXT DEFAULT 'linear-gradient(135deg,#1e3a8a,#3b82f6)')`,
+    `CREATE TABLE IF NOT EXISTS lessons(
+      id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
+      title TEXT NOT NULL, video_url TEXT, description TEXT)`,
+    `CREATE TABLE IF NOT EXISTS enrollments(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, course_id INTEGER NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, course_id))`,
+    `CREATE TABLE IF NOT EXISTS codes(
+      id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL, course_id INTEGER NOT NULL,
+      used INTEGER DEFAULT 0, used_by INTEGER, item_type TEXT DEFAULT 'course')`,
+    `CREATE TABLE IF NOT EXISTS messages(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
+      reply TEXT, created_at TIMESTAMP DEFAULT NOW(), replied_at TEXT)`,
+    `CREATE TABLE IF NOT EXISTS books(
+      id SERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT,
+      price INTEGER NOT NULL, emoji TEXT DEFAULT '📖', pdf_url TEXT)`,
+    `CREATE TABLE IF NOT EXISTS exams(
+      id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
+      title TEXT NOT NULL, duration_minutes INTEGER DEFAULT 30,
+      status TEXT DEFAULT 'closed', created_at TIMESTAMP DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS questions(
+      id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL,
+      type TEXT NOT NULL, text TEXT NOT NULL,
+      options TEXT, order_items TEXT, correct TEXT, points INTEGER DEFAULT 1)`,
+    `CREATE TABLE IF NOT EXISTS submissions(
+      id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+      answers TEXT, score REAL DEFAULT 0, essay_score REAL DEFAULT 0,
+      essay_pending INTEGER DEFAULT 0, time_taken INTEGER DEFAULT 0,
+      submitted_at TIMESTAMP DEFAULT NOW(), UNIQUE(exam_id, user_id))`,
+    `CREATE TABLE IF NOT EXISTS notifications(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
+      read INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS lesson_views(
+      user_id INTEGER NOT NULL, lesson_id INTEGER NOT NULL,
+      viewed_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(user_id, lesson_id))`,
+    `CREATE TABLE IF NOT EXISTS sessions(
+      token TEXT PRIMARY KEY, user_id INTEGER, admin INTEGER DEFAULT 0,
+      expires TIMESTAMPTZ NOT NULL)`
+  ];
+  await Promise.all(ddl.map(q => pool.query(q)));
+  await Promise.all([
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled INTEGER DEFAULT 0`),
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attempts_left INTEGER DEFAULT 3`),
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_call INTEGER DEFAULT 0`),
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT`)
   ]);
-  courses = cs; me = m;
-  renderProfile();
-  document.getElementById('coursesGrid').innerHTML = courses.map(c=>{
-    const enr = me.enrollments.find(e=>e.course_id===c.id);
-    const active = enr && new Date(enr.expires_at) > new Date();
-    const expired = enr && !active;
-    let bottom = '';
-    if(active){
-      bottom = `<div class="unlockedBadge">✅ أنت مشترك — الاشتراك ساري</div>
-        <button class="btnEnter" onclick="openCourse(${c.id})">🚀 ادخل الكورس</button>`;
-    } else if(expired){
-      bottom = `<div class="expiredBadge">⌛ انتهى شهر الاشتراك — كلم المدير للتجديد</div>`;
-    } else {
-      bottom = `<div class="codeArea">
-          <label>عندك رمز؟ اكتبه هنا بعد ما تدفع:</label>
-          <div class="codeRow">
-            <input id="code-${c.id}" placeholder="رمز الدخول">
-            <button onclick="activate(${c.id})">تفعيل</button>
-          </div>
-          <div class="codeMsg" id="msg-${c.id}"></div>
-        </div>
-        <button class="btnSub" style="margin-top:15px;" onclick="subscribeCourse(${c.id})">💰 الاشتراك في الكورس</button>`;
-    }
-    return `<div class="courseCard">
-      <div class="courseImg" style="background:${c.color}">${c.emoji}</div>
-      <div class="courseBody">
-        <h3>${esc(c.name)}</h3>
-        <p class="desc">${esc(c.description)}</p>
-        <div class="price">${c.price} جنيه</div>
-        ${bottom}
-      </div>
-    </div>`;
-  }).join('');
 }
 
-function subscribeCourse(id){
-  const c = courses.find(x=>x.id===id);
-  window.open(waLink(`أنا ${me.user.first_name} أريد الاشتراك في كورس ${c.name}`));
-}
-function whatsappGeneral(){
-  window.open(waLink(`أنا ${me.user.first_name} أريد الاستفسار عن الدفع والاشتراكات`));
+async function notify(userId, text){
+  await pool.query('INSERT INTO notifications(user_id,text) VALUES($1,$2)',[userId,text]);
 }
 
-async function activate(courseId){
-  const msg = document.getElementById('msg-'+courseId);
-  const code = document.getElementById('code-'+courseId).value.trim();
-  const r = await fetch('/api/activate',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({courseId, code})});
-  const d = await r.json();
-  if(d.ok){ msg.style.color='#166534'; msg.textContent='✅ تم التفعيل! الكورس اتفتح'; setTimeout(loadCourses,900); }
-  else { msg.style.color='#b91c1c'; msg.textContent='❌ '+esc(d.msg); }
-}
-
-function lessonHTML(l, viewed){
-  let media = `<div class="videoBox"><div class="icon">🎬</div>مكان الفيديو — هيتضاف قريب</div>`;
-  if(l.video_url){
-    const m = l.video_url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-    if(m) media = `<iframe width="100%" height="380" src="https://www.youtube.com/embed/${m[1]}"
-      frameborder="0" allowfullscreen style="border:none;border-radius:12px;"></iframe>`;
-    else media = `<video controls style="width:100%;border-radius:12px;"><source src="${esc(l.video_url)}"></video>`;
-  }
-  return `<div class="lesson">
-    <h4>${viewed?'<span class="watchBadge">✅ تم السماع</span> — ':''}${esc(l.title)}</h4>
-    <div id="vw-${l.id}" class="videoWrap hidden">${media}${l.description?'<p>'+esc(l.description)+'</p>':''}</div>
-    <button class="btnLesson" id="btn-${l.id}" onclick="openLesson(${l.id}, ${viewed?1:0})">▶️ افتح الدرس</button>
-  </div>`;
-}
-
-async function openLesson(id, already){
-  document.getElementById('vw-'+id).classList.remove('hidden');
-  document.getElementById('btn-'+id).classList.add('hidden');
-  if(!already){
-    await fetch('/api/lesson-viewed',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({lesson_id:id})});
-    if(!currentViewed.includes(id)) currentViewed.push(id);
-    renderLessons();
-  }
-}
-
-function renderLessons(){
-  const box = document.getElementById('cpLessons');
-  const total = courseData.length;
-  const done = courseData.filter(l=>currentViewed.includes(l.id)).length;
-  const pct = total ? Math.round(done/total*100) : 0;
-  box.innerHTML = `<div style="margin-bottom:15px;font-weight:700;color:#1e3a8a;text-align:center;">
-      أنت سمّعت ${done} من ${total} درس (${pct}%)</div>
-    <div class="progressBar"><div style="width:${pct}%"></div></div>` +
-    (courseData.length ? courseData.map(l=>lessonHTML(l, currentViewed.includes(l.id))).join('')
-      : '<div class="noReply">مفيش دروس لسه</div>');
-}
-
-function cpTab(t){
-  ['lessons','exam','honor'].forEach(x=>{
-    document.getElementById('cpTab-'+x).classList.toggle('active', x===t);
-    document.getElementById('cp'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('hidden', x!==t);
-  });
-  if(t==='exam') loadExam();
-  if(t==='honor') loadHonor();
-}
-
-let courseData = [];
-async function openCourse(id){
-  currentCourse = id;
-  const r = await fetch('/api/course/'+id);
-  if(!r.ok){ const d = await r.json(); alert(d.error); return; }
-  const d = await r.json();
-  const c = courses.find(x=>x.id===id);
-  document.getElementById('cpTitle').textContent = c.name;
-  courseData = d.lessons;
-  currentViewed = d.viewed || [];
-  renderLessons();
-  document.getElementById('coursePage').classList.remove('hidden');
-  cpTab('lessons');
-  window.scrollTo(0,0);
-}
-
-function closeCourse(){ clearInterval(timerInt); clearInterval(examInt);
-  document.getElementById('coursePage').classList.add('hidden'); loadCourses(); }
-
-const typeNames = {mcq:'اختيار من متعدد', truefalse:'صح وغلط', order:'ترتيب', essay:'مقالي'};
-
-async function loadExam(){
-  const box = document.getElementById('cpExam');
-  box.innerHTML = '<div class="noReply">جاري التحميل...</div>';
-  const r = await fetch('/api/exam/'+currentCourse);
-  examData = await r.json();
-  if(examData.status==='none'){
-    box.innerHTML = '<div class="noReply">مفيش امتحان متاح في الكورس ده حاليًا</div>'; return;
-  }
-  if(examData.status==='closed'){
-    box.innerHTML = '<div class="noReply">🔒 الامتحان مقفول حاليًا — استنى إعلان المدير</div>'; return;
-  }
-  if(examData.status==='results'){
-    box.innerHTML = `<div class="noReply">📊 نتائج الامتحان ظهرت في <b>لوحة الشرف 🏆</b> — انتقل ليها من فوق!</div>`; return;
-  }
-  if(examData.status==='submitted'){
-    box.innerHTML = `<div class="examIntro"><h3>✅ سلمت الامتحان</h3>
-      <p>درجتك الحالية: <b>${examData.score}</b>${examData.essayPending?'<br><small style="color:#d97706;">فيه سؤال مقالي هيصححه المدير — الدرجة النهائية تظهر في لوحة الشرف</small>':''}</p></div>`;
-    return;
-  }
-  examAnswers = {}; examStart = Date.now();
-  box.innerHTML = `
-    <div class="examIntro" style="margin-bottom:20px;">
-      <h3>📝 ${esc(examData.examTitle)}</h3>
-      <p>مدة الامتحان: <b>${examData.duration} دقيقة</b> — بمجرد ما تدوس "بدأ" العداد هيبدأ ومش هيتوقف!</p>
-      <p style="color:#b91c1c;font-weight:700;">سلم مرة واحدة بس — مفيش رجوع!</p>
-      <button class="btnMain" style="max-width:250px;" onclick="beginExam()">🚀 بدأ الامتحان</button>
-    </div>
-    <div id="examQuestions" class="hidden"></div>`;
-}
-
-function beginExam(){
-  document.getElementById('examQuestions').classList.remove('hidden');
-  renderExamQuestions();
-  let left = examData.duration * 60;
-  const tEl = document.getElementById('cpTitle');
-  examInt = setInterval(()=>{
-    left--;
-    if(left<=0){ clearInterval(examInt); submitExam(true); return; }
-    const m=Math.floor(left/60), s=left%60;
-    if(tEl) tEl.textContent = '⏰ ' + m + ':' + String(s).padStart(2,'0');
-  }, 1000);
-  window.scrollTo(0,0);
-}
-
-function renderExamQuestions(){
-  const box = document.getElementById('examQuestions');
-  box.innerHTML = examData.questions.map((q,i)=>{
-    let body = '';
-    if(q.type==='mcq'){
-      body = (q.options||[]).map((op,j)=>
-        `<div class="optRow" onclick="pick(${q.id},'${esc(String.fromCharCode(65+j))}',this)">
-          <input type="radio" name="q${q.id}"><span>${esc(op)}</span></div>`).join('');
-    } else if(q.type==='truefalse'){
-      body = `<div class="optRow" onclick="pick(${q.id},'صح',this)"><input type="radio" name="q${q.id}"><span>✅ صح</span></div>
-              <div class="optRow" onclick="pick(${q.id},'غلط',this)"><input type="radio" name="q${q.id}"><span>❌ غلط</span></div>`;
-    } else if(q.type==='order'){
-      body = `<div id="ord-${q.id}">` + (q.items||[]).map((it,j)=>
-        `<div class="ordRow" draggable="true" ondragstart="dragS(event)" ondragover="event.preventDefault()"
-          ondrop="dropOrd(event,'${q.id}')"><span class="num">${j+1}</span><span>${esc(it)}</span></div>`).join('') + `</div>
-        <small style="color:#94a3b8;">اسحب العناصر لإعادة ترتيبها (الأول فوق)</small>`;
-    } else if(q.type==='essay'){
-      body = `<textarea class="essayTa" oninput="examAnswers[${q.id}]=examAnswers[${q.id}]||{}; examAnswers[${q.id}].value=this.value"
-        placeholder="اكتب إجابتك هنا..."></textarea>`;
-    }
-    return `<div class="qCard">
-      <span class="qNum">سؤال ${i+1} — ${q.points} درجة</span><span class="qType">${typeNames[q.type]||''}</span>
-      <h4>${esc(q.text)}</h4>
-      ${body}
-    </div>`;
-  }).join('') + `<button class="btnSubmitExam" onclick="submitExam(false)">📨 تسليم الامتحان</button>`;
-}
-
-function pick(qid, val, el){
-  examAnswers[qid] = {value: val};
-  const card = el.closest('.qCard');
-  card.querySelectorAll('.optRow').forEach(r=>r.classList.remove('sel'));
-  el.classList.add('sel');
-}
-
-let dragEl = null;
-function dragS(e){ dragEl = e.target; }
-function dropOrd(e, qid){
-  e.preventDefault();
-  const cont = document.getElementById('ord-'+qid);
-  if(!dragEl || !cont || dragEl.parentElement!==cont) return;
-  const target = e.target.closest('.ordRow') || cont.lastElementChild;
-  cont.insertBefore(dragEl, target === dragEl ? null : (target.nextElementSibling || null));
-  if(target === dragEl) cont.insertBefore(dragEl, null);
-  [...cont.children].forEach((r,i)=> r.querySelector('.num').textContent = i+1);
-  examAnswers[qid] = {value: [...cont.children].map(r=>r.querySelector('span:last-child').textContent)};
-}
-
-async function submitExam(auto){
-  if(!auto){
-    const answered = Object.keys(examAnswers).length;
-    if(!confirm(`متأكد من التسليم؟ جاوبت على ${answered} سؤال — مش هتقدر تعدل بعدها!`)) return;
-  }
-  clearInterval(examInt);
-  const timeTaken = Math.floor((Date.now()-examStart)/1000);
-  const r = await fetch('/api/exam/'+currentCourse+'/submit',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({answers: Object.entries(examAnswers).map(([qid,v])=>({qid:Number(qid), value:v.value})), time_taken: timeTaken})});
-  const d = await r.json();
-  if(d.ok){
-    document.getElementById('cpExam').innerHTML = `<div class="examIntro"><h3>📨 اتسلم!</h3>
-      <p>درجتك: <b>${d.score}</b>${d.essayPending?'<br><small style="color:#d97706;">فيه مقالي هيصححه المدير — النتيجة النهائية في لوحة الشرف</small>':''}</p></div>`;
+async function checkAccumulation(userId, courseId){
+  const total = (await pool.query('SELECT COUNT(*)::int AS n FROM lessons WHERE course_id=$1',[courseId])).rows[0].n;
+  const viewed = (await pool.query(`SELECT COUNT(*)::int AS n FROM lesson_views lv
+    JOIN lessons l ON l.id=lv.lesson_id WHERE lv.user_id=$1 AND l.course_id=$2`,[userId,courseId])).rows[0].n;
+  if(total - viewed < 2) return;
+  const u = (await pool.query('SELECT * FROM users WHERE id=$1',[userId])).rows[0];
+  if(!u || u.disabled) return;
+  if(u.attempts_left > 0){
+    await notify(userId, `⚠️ لقد راكمت الدرس السابق لديك و لديك ${u.attempts_left} محاولات و بعدها سيتم ابلاغ ولي الامر و في المره الثانيه سيتم الغاء تفعيل حسابك و ستحتاج لمكالمة الدعم عبر ولي الامر علي الرقم 01283674859 لتفعيل الحساب`);
+    await pool.query('UPDATE users SET attempts_left=$1 WHERE id=$2',[u.attempts_left-1,userId]);
+  } else if(!u.parent_call){
+    await pool.query('UPDATE users SET parent_call=1 WHERE id=$1',[userId]);
+    await notify(userId, '📞 تم ابلاغ الإدارة بضرورة الاتصال بولي أمرك — يرجى متابعة الدروس فورًا');
   } else {
-    alert(d.msg||'حصل خطأ');
-    loadExam();
+    await pool.query('UPDATE users SET disabled=1 WHERE id=$1',[userId]);
+    await notify(userId, '🚫 تم الغاء تفعيل حسابك لعدم متابعة الدروس — تواصل مع الدعم عبر ولي الأمر لتفعيل الحساب');
   }
 }
 
-async function loadHonor(){
-  const box = document.getElementById('cpHonor');
-  box.innerHTML = '<div class="noReply">جاري التحميل...</div>';
-  const r = await fetch('/api/exam/'+currentCourse+'/honor');
-  const d = await r.json();
-  if(d.status!=='results'){
-    box.innerHTML = '<div class="noReply">🏆 لوحة الشرف بتظهر لما المدير يعلن نتائج الامتحان</div>'; return;
+const app = express();
+app.use(express.json());
+
+function getToken(req){
+  const m = (req.headers.cookie||'').match(/(?:^|;\s*)sid=([^;]+)/);
+  return m ? m[1] : null;
+}
+app.use(async (req,res,next)=>{
+  try {
+    const t = getToken(req);
+    req.sess = null;
+    if(t){
+      const r = await pool.query('SELECT * FROM sessions WHERE token=$1 AND expires>NOW()',[t]);
+      req.sess = r.rows[0] || null;
+    }
+  } catch(e){ req.sess = null; }
+  next();
+});
+async function createSess(res, userId, admin){
+  const token = crypto.randomBytes(24).toString('hex');
+  await pool.query('DELETE FROM sessions WHERE expires<NOW()');
+  await pool.query("INSERT INTO sessions(token,user_id,admin,expires) VALUES($1,$2,$3, NOW()+INTERVAL '7 days')",
+    [token, userId||null, admin?1:0]);
+  res.setHeader('Set-Cookie', `sid=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
+}
+
+function requireLogin(req,res,next){
+  if(!req.sess || !req.sess.user_id)
+    return res.status(401).json({ok:false,msg:'انتهت الجلسة — سجل دخول تاني',error:'لازم تسجل دخول الأول'});
+  req.session = { userId: req.sess.user_id };
+  next();
+}
+function requireAdmin(req,res,next){
+  if(!req.sess || !req.sess.admin)
+    return res.status(401).json({ok:false,msg:'انتهت جلسة المدير — سجل دخول تاني',error:'صلاحيات مدير مطلوبة'});
+  next();
+}
+
+app.post('/api/signup', async (req,res)=>{
+  const {first,last,phone,parent,email,pass,grade,gender} = req.body;
+  if(!first||!last||!phone||!parent||!email||!pass||!grade||!gender)
+    return res.json({ok:false,msg:'املأ كل الحقول'});
+  if(pass.length < 6) return res.json({ok:false,msg:'الرقم السري لازم 6 حروف على الأقل'});
+  const em = email.trim().toLowerCase();
+  try {
+    const ex = await pool.query('SELECT id FROM users WHERE email=$1',[em]);
+    if(ex.rows.length) return res.json({ok:false,msg:'الإيميل ده مسجل قبل كده'});
+    const ins = await pool.query(
+      `INSERT INTO users(first_name,last_name,phone,parent_phone,email,password,grade,gender)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [first.trim(),last.trim(),phone.trim(),parent.trim(),em,bcrypt.hashSync(pass,10),grade,gender]);
+    await createSess(res, ins.rows[0].id, false);
+    res.json({ok:true});
+  } catch(e){ res.json({ok:false,msg:'حصل خطأ، حاول تاني'}); }
+});
+
+app.post('/api/login', async (req,res)=>{
+  try {
+    const em = (req.body.email||'').trim().toLowerCase();
+    const r = await pool.query('SELECT * FROM users WHERE email=$1',[em]);
+    const user = r.rows[0];
+    if(!user || !bcrypt.compareSync(req.body.pass||'', user.password))
+      return res.json({ok:false,msg:'الإيميل أو الرقم السري غلط'});
+    if(user.disabled) return res.json({ok:false,msg:'تم تعطيل حسابك — تواصل مع الدعم'});
+    await createSess(res, user.id, false);
+    res.json({ok:true});
+  } catch(e){ res.json({ok:false,msg:'حصل خطأ، حاول تاني'}); }
+});
+
+app.post('/api/logout', async (req,res)=>{
+  const t = getToken(req);
+  if(t) await pool.query('DELETE FROM sessions WHERE token=$1',[t]);
+  res.setHeader('Set-Cookie','sid=; Path=/; HttpOnly; Max-Age=0');
+  res.json({ok:true});
+});
+
+const cleanUser = u => { const {password, ...rest} = u; return rest; };
+
+app.get('/api/me', requireLogin, async (req,res)=>{
+  const u = (await pool.query('SELECT * FROM users WHERE id=$1',[req.session.userId])).rows[0];
+  if(!u) return res.status(401).json({error:'سجل دخول تاني'});
+  if(u.disabled) return res.status(403).json({error:'تم تعطيل حسابك — تواصل مع الدعم'});
+  const enr = await pool.query('SELECT course_id, expires_at FROM enrollments WHERE user_id=$1 ORDER BY id',[u.id]);
+  const bk = await pool.query('SELECT course_id AS book_id FROM codes WHERE used_by=$1 AND item_type=$2',[u.id,'book']);
+  res.json({user: cleanUser(u), enrollments: enr.rows, books: bk.rows});
+});
+
+app.post('/api/upload-pic', requireLogin, async (req,res)=>{
+  const pic = String(req.body.pic||'');
+  if(!pic.startsWith('data:image/') || pic.length > 900000)
+    return res.json({ok:false,msg:'الصورة كبيرة أو غير صالحة'});
+  await pool.query('UPDATE users SET profile_pic=$1 WHERE id=$2',[pic, req.session.userId]);
+  res.json({ok:true});
+});
+
+app.get('/api/notifications', requireLogin, async (req,res)=>{
+  const rows = (await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY id DESC LIMIT 50',[req.session.userId])).rows;
+  res.json({rows, unread: rows.filter(r=>!r.read).length});
+});
+app.post('/api/notifications/read', requireLogin, async (req,res)=>{
+  await pool.query('UPDATE notifications SET read=1 WHERE user_id=$1',[req.session.userId]);
+  res.json({ok:true});
+});
+
+app.get('/api/courses', async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM courses ORDER BY id')).rows);
+});
+
+app.post('/api/activate', requireLogin, async (req,res)=>{
+  const courseId = Number(req.body.courseId);
+  const code = String(req.body.code||'').trim();
+  if(!code) return res.json({ok:false,msg:'اكتب الرمز الأول'});
+  try {
+    const c = (await pool.query("SELECT * FROM codes WHERE code=$1 AND item_type='course'",[code])).rows[0];
+    if(!c || c.course_id !== courseId) return res.json({ok:false,msg:'الرمز غير صحيح'});
+    if(c.used) return res.json({ok:false,msg:'الرمز ده مستخدم قبل كده'});
+    const ex = await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId]);
+    if(ex.rows.length) return res.json({ok:false,msg:'أنت مشترك في الكورس ده بالفعل'});
+    const expires = new Date(Date.now() + 30*24*60*60*1000);
+    await pool.query('INSERT INTO enrollments(user_id,course_id,expires_at) VALUES($1,$2,$3)',[req.session.userId,courseId,expires]);
+    await pool.query('UPDATE codes SET used=1, used_by=$1 WHERE id=$2',[req.session.userId,c.id]);
+    res.json({ok:true});
+  } catch(e){ res.json({ok:false,msg:'حصل خطأ، حاول تاني'}); }
+});
+
+app.get('/api/course/:id', requireLogin, async (req,res)=>{
+  const courseId = Number(req.params.id);
+  const enr = (await pool.query('SELECT * FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId])).rows[0];
+  if(!enr) return res.status(403).json({error:'أنت مش مشترك في الكورس ده'});
+  if(new Date(enr.expires_at) < new Date()) return res.status(403).json({error:'انتهى شهر الاشتراك'});
+  const lessons = (await pool.query('SELECT * FROM lessons WHERE course_id=$1 ORDER BY id',[courseId])).rows;
+  const vw = await pool.query('SELECT lesson_id FROM lesson_views WHERE user_id=$1',[req.session.userId]);
+  res.json({lessons, viewed: vw.rows.map(v=>v.lesson_id), expires_at: enr.expires_at});
+});
+
+app.post('/api/lesson-viewed', requireLogin, async (req,res)=>{
+  const lid = Number(req.body.lesson_id);
+  const l = (await pool.query('SELECT * FROM lessons WHERE id=$1',[lid])).rows[0];
+  if(!l) return res.json({ok:false});
+  const enr = await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,l.course_id]);
+  if(!enr.rows.length) return res.json({ok:false});
+  await pool.query('INSERT INTO lesson_views(user_id,lesson_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[req.session.userId,lid]);
+  res.json({ok:true});
+});
+
+app.get('/api/exam/:courseId', requireLogin, async (req,res)=>{
+  const courseId = Number(req.params.courseId);
+  const enr = (await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId])).rows[0];
+  if(!enr) return res.status(403).json({error:'أنت مش مشترك في الكورس ده'});
+  const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
+  if(!exam) return res.json({status:'none'});
+  if(exam.status==='results') return res.json({status:'results', examTitle: exam.title});
+  if(exam.status!=='open') return res.json({status:'closed'});
+  const sub = (await pool.query('SELECT * FROM submissions WHERE exam_id=$1 AND user_id=$2',[exam.id,req.session.userId])).rows[0];
+  if(sub) return res.json({status:'submitted', score: sub.score+sub.essay_score, essayPending: !!sub.essay_pending});
+  const qs = (await pool.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY id',[exam.id])).rows
+    .map(q=>{
+      const o = {id:q.id, type:q.type, text:q.text, points:q.points};
+      if(q.type==='mcq') o.options = JSON.parse(q.options||'[]');
+      if(q.type==='order'){
+        const items = JSON.parse(q.order_items||'[]');
+        for(let i=items.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [items[i],items[j]]=[items[j],items[i]]; }
+        o.items = items;
+      }
+      return o;
+    });
+  res.json({status:'open', examTitle: exam.title, duration: exam.duration_minutes, questions: qs});
+});
+
+app.post('/api/exam/:courseId/submit', requireLogin, async (req,res)=>{
+  const courseId = Number(req.params.courseId);
+  const exam = (await pool.query("SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1",[courseId])).rows[0];
+  if(!exam || exam.status!=='open') return res.json({ok:false,msg:'الامتحان مقفول'});
+  const sub = (await pool.query('SELECT id FROM submissions WHERE exam_id=$1 AND user_id=$2',[exam.id,req.session.userId])).rows[0];
+  if(sub) return res.json({ok:false,msg:'أنت سلمت الامتحان ده قبل كده'});
+  const answers = Array.isArray(req.body.answers)? req.body.answers : [];
+  const timeTaken = Math.max(0, Math.min(Number(req.body.time_taken)||0, 24*60*60));
+  const qs = (await pool.query('SELECT * FROM questions WHERE exam_id=$1',[exam.id])).rows;
+  let score = 0, essayPending = 0;
+  for(const q of qs){
+    const a = answers.find(x=>Number(x.qid)===q.id);
+    if(q.type==='mcq' || q.type==='truefalse'){
+      if(a && String(a.value??'').trim() === String(q.correct||'').trim()) score += Number(q.points)||1;
+    } else if(q.type==='order'){
+      if(a && Array.isArray(a.value)){
+        const correct = JSON.parse(q.order_items||'[]');
+        if(JSON.stringify(a.value)===JSON.stringify(correct)) score += Number(q.points)||1;
+      }
+    } else if(q.type==='essay'){ essayPending = 1; }
   }
-  const medals = ['🥇','🥈','🥉'];
-  box.innerHTML = `<h3 style="text-align:center;color:#1e3a8a;margin-bottom:8px;">🏆 لوحة الشرف — ${esc(d.examTitle)}</h3>
-    <p style="text-align:center;color:#64748b;margin-bottom:20px;font-size:13px;">الترتيب: أعلى درجة ← أقل وقت</p>
-    <div class="podium">` + (d.results||[]).map((r,i)=>`
-      <div class="honorRow ${i<3?'r'+(i+1):''}">
-        <div class="rank">${medals[i]||('#'+(i+1))}</div>
-        <div class="name">${esc(r.first_name+' '+r.last_name)}<small>${esc(r.grade||'')}</small></div>
-        <div class="sc">${r.total} درجة${r.essay_pending?' ⏳':''}</div>
-        <div class="tm">⏱ ${fmtTime(r.time_taken)}</div>
-      </div>`).join('') + `</div>`;
-}
+  await pool.query(
+    `INSERT INTO submissions(exam_id,user_id,answers,score,essay_pending,time_taken)
+     VALUES($1,$2,$3,$4,$5,$6)`,
+    [exam.id, req.session.userId, JSON.stringify(answers), score, essayPending, timeTaken]);
+  res.json({ok:true, score, essayPending: !!essayPending});
+});
 
-async function sendSupport(){
-  const t = document.getElementById('supportText').value.trim();
-  if(!t) return document.getElementById('supportMsg').innerHTML='<div class="error">اكتب رسالتك الأول</div>';
-  await fetch('/api/support',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
-  document.getElementById('supportText').value='';
-  document.getElementById('supportMsg').innerHTML='<div class="success">✅ وصلت رسالتك للإدارة</div>';
-  loadReplies();
-}
+app.get('/api/exam/:courseId/honor', async (req,res)=>{
+  const courseId = Number(req.params.courseId);
+  const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
+  if(!exam || exam.status!=='results') return res.json({status:'closed'});
+  const rows = (await pool.query(
+    `SELECT u.first_name, u.last_name, u.grade,
+            (s.score+s.essay_score) AS total, s.time_taken, s.essay_pending
+     FROM submissions s JOIN users u ON u.id=s.user_id
+     WHERE s.exam_id=$1 ORDER BY total DESC, s.time_taken ASC`,[exam.id])).rows;
+  res.json({status:'results', examTitle: exam.title, results: rows});
+});
 
-async function loadReplies(){
-  const msgs = await fetch('/api/my-messages').then(r=>r.json());
-  const withReply = msgs.filter(m=>m.reply);
-  document.getElementById('repliesList').innerHTML = withReply.length
-    ? withReply.map(m=>`<div class="replyCard">
-        <div class="q"><b>رسالتك:</b> ${esc(m.text)}</div>
-        <div class="a"><b>رد الدعم:</b> ${esc(m.reply)}</div></div>`).join('')
-    : '<div class="noReply">مفيش ردود لسه</div>';
-}
+app.get('/api/books', async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM books ORDER BY id DESC')).rows);
+});
+app.post('/api/activate-book', requireLogin, async (req,res)=>{
+  const bookId = Number(req.body.bookId);
+  const code = String(req.body.code||'').trim();
+  const c = (await pool.query("SELECT * FROM codes WHERE code=$1 AND item_type='book'",[code])).rows[0];
+  if(!c || c.course_id !== bookId) return res.json({ok:false,msg:'الرمز غير صحيح'});
+  if(c.used) return res.json({ok:false,msg:'الرمز ده مستخدم قبل كده'});
+  await pool.query('UPDATE codes SET used=1, used_by=$1 WHERE id=$2',[req.session.userId,c.id]);
+  res.json({ok:true});
+});
 
-window.onload = async ()=>{
-  const r = await fetch('/api/me');
-  if(r.ok){ me = await r.json(); await loadCourses(); showApp(); }
+app.post('/api/support', requireLogin, async (req,res)=>{
+  const text = (req.body.text||'').trim();
+  if(!text) return res.json({ok:false});
+  await pool.query('INSERT INTO messages(user_id,text) VALUES($1,$2)',[req.session.userId,text]);
+  res.json({ok:true});
+});
+app.get('/api/my-messages', requireLogin, async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM messages WHERE user_id=$1 ORDER BY id DESC',[req.session.userId])).rows);
+});
+
+app.post('/api/admin/login', async (req,res)=>{
+  if(req.body.username===ADMIN_USER && req.body.password===ADMIN_PASS){
+    await createSess(res, null, true);
+    return res.json({ok:true});
+  }
+  res.json({ok:false,msg:'بيانات المدير غلط'});
+});
+app.post('/api/admin/logout', async (req,res)=>{
+  const t = getToken(req);
+  if(t) await pool.query('DELETE FROM sessions WHERE token=$1',[t]);
+  res.setHeader('Set-Cookie','sid=; Path=/; HttpOnly; Max-Age=0');
+  res.json({ok:true});
+});
+
+app.get('/api/admin/messages', requireAdmin, async (req,res)=>{
+  res.json((await pool.query(`SELECT m.*, u.first_name, u.last_name, u.phone, u.email
+    FROM messages m JOIN users u ON u.id=m.user_id ORDER BY m.id DESC`)).rows);
+});
+app.post('/api/admin/reply', requireAdmin, async (req,res)=>{
+  const m = (await pool.query('SELECT * FROM messages WHERE id=$1',[Number(req.body.id)])).rows[0];
+  await pool.query('UPDATE messages SET reply=$1, replied_at=$2 WHERE id=$3',
+    [req.body.reply, new Date().toLocaleString('ar-EG'), Number(req.body.id)]);
+  if(m) await notify(m.user_id, '💬 الدعم رد على رسالتك — افتح قسم "ردود الدعم"');
+  res.json({ok:true});
+});
+
+app.get('/api/admin/users', requireAdmin, async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM users ORDER BY id DESC')).rows.map(cleanUser));
+});
+app.post('/api/admin/toggle-user', requireAdmin, async (req,res)=>{
+  const u = (await pool.query('SELECT disabled FROM users WHERE id=$1',[Number(req.body.user_id)])).rows[0];
+  if(!u) return res.json({ok:false});
+  const newVal = u.disabled?0:1;
+  await pool.query('UPDATE users SET disabled=$1 WHERE id=$2',[newVal, Number(req.body.user_id)]);
+  if(newVal===0) await pool.query('UPDATE users SET attempts_left=3, parent_call=0 WHERE id=$1',[Number(req.body.user_id)]);
+  res.json({ok:true, disabled:newVal});
+});
+
+app.get('/api/admin/courses', requireAdmin, async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM courses ORDER BY id')).rows);
+});
+app.post('/api/admin/courses', requireAdmin, async (req,res)=>{
+  const {name,description,price,emoji} = req.body;
+  await pool.query('INSERT INTO courses(name,description,price,emoji) VALUES($1,$2,$3,$4)',
+    [name,description,Number(price)||0,emoji||'📚']);
+  const all = (await pool.query('SELECT id FROM users WHERE disabled=0')).rows;
+  for(const u of all.rows) await notify(u.id, `🎓 كورس جديد اتضاف على المنصة: ${name}`);
+  res.json({ok:true});
+});
+app.post('/api/admin/courses/delete', requireAdmin, async (req,res)=>{
+  const cid = Number(req.body.id);
+  if(!cid) return res.json({ok:false,msg:'معرف الكورس ناقص'});
+  await pool.query('DELETE FROM submissions WHERE exam_id IN (SELECT id FROM exams WHERE course_id=$1)',[cid]);
+  await pool.query('DELETE FROM questions WHERE exam_id IN (SELECT id FROM exams WHERE course_id=$1)',[cid]);
+  await pool.query('DELETE FROM exams WHERE course_id=$1',[cid]);
+  await pool.query('DELETE FROM lesson_views WHERE lesson_id IN (SELECT id FROM lessons WHERE course_id=$1)',[cid]);
+  await pool.query('DELETE FROM lessons WHERE course_id=$1',[cid]);
+  await pool.query('DELETE FROM enrollments WHERE course_id=$1',[cid]);
+  await pool.query('DELETE FROM codes WHERE course_id=$1 AND item_type=$2',[cid,'course']);
+  await pool.query('DELETE FROM courses WHERE id=$1',[cid]);
+  res.json({ok:true});
+});
+
+app.post('/api/admin/codes', requireAdmin, async (req,res)=>{
+  const c = String(req.body.code||'').trim().toUpperCase();
+  const itemType = (req.body.item_type==='book') ? 'book' : 'course';
+  if(!c) return res.json({ok:false,msg:'اكتب الرمز'});
+  try {
+    await pool.query('INSERT INTO codes(code,course_id,item_type) VALUES($1,$2,$3)',
+      [c, Number(req.body.item_id||req.body.course_id), itemType]);
+    res.json({ok:true});
+  } catch(e){ res.json({ok:false,msg:'الرمز ده موجود قبل كده'}); }
+});
+app.get('/api/admin/codes', requireAdmin, async (req,res)=>{
+  const itemType = req.query.item_type || 'course';
+  const itemId = Number(req.query.item_id || req.query.course_id);
+  res.json((await pool.query(`SELECT c.*, u.first_name AS used_by_name FROM codes c
+    LEFT JOIN users u ON u.id=c.used_by
+    WHERE c.item_type=$1 AND c.course_id=$2 ORDER BY c.id DESC`,[itemType,itemId])).rows);
+});
+
+app.post('/api/admin/lessons', requireAdmin, async (req,res)=>{
+  const {course_id,title,video_url,description} = req.body;
+  if(!title) return res.json({ok:false,msg:'اكتب عنوان الدرس'});
+  await pool.query('INSERT INTO lessons(course_id,title,video_url,description) VALUES($1,$2,$3,$4)',
+    [Number(course_id), title, video_url||null, description||null]);
+  const course = (await pool.query('SELECT name FROM courses WHERE id=$1',[Number(course_id)])).rows[0];
+  const enr = (await pool.query('SELECT user_id FROM enrollments WHERE course_id=$1',[Number(course_id)])).rows;
+  for(const e of enr.rows){
+    await notify(e.user_id, `🎬 درس جديد في كورس ${course?course.name:''}: ${title}`);
+    await checkAccumulation(e.user_id, Number(course_id));
+  }
+  res.json({ok:true});
+});
+app.get('/api/admin/lessons', requireAdmin, async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM lessons WHERE course_id=$1 ORDER BY id',[Number(req.query.course_id)])).rows);
+});
+
+app.post('/api/admin/books', requireAdmin, async (req,res)=>{
+  const {title,description,price,emoji,pdf_url} = req.body;
+  if(!title) return res.json({ok:false,msg:'اكتب اسم الكتاب'});
+  await pool.query('INSERT INTO books(title,description,price,emoji,pdf_url) VALUES($1,$2,$3,$4,$5)',
+    [title, description||'', Number(price)||0, emoji||'📖', pdf_url||null]);
+  res.json({ok:true});
+});
+app.get('/api/admin/books', requireAdmin, async (req,res)=>{
+  res.json((await pool.query('SELECT * FROM books ORDER BY id DESC')).rows);
+});
+app.post('/api/admin/books/delete', requireAdmin, async (req,res)=>{
+  await pool.query('DELETE FROM books WHERE id=$1',[Number(req.body.id)]);
+  res.json({ok:true});
+});
+
+app.get('/api/admin/exam', requireAdmin, async (req,res)=>{
+  const courseId = Number(req.query.course_id);
+  const exam = (await pool.query('SELECT * FROM exams WHERE course_id=$1 ORDER BY id DESC LIMIT 1',[courseId])).rows[0];
+  if(!exam) return res.json({exam:null});
+  const questions = (await pool.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY id',[exam.id])).rows
+    .map(q=>({...q, options: q.options?JSON.parse(q.options):null, order_items: q.order_items?JSON.parse(q.order_items):null}));
+  const subs = (await pool.query(
+    `SELECT s.*, u.first_name, u.last_name FROM submissions s
+     JOIN users u ON u.id=s.user_id WHERE s.exam_id=$1 ORDER BY (s.score+s.essay_score) DESC, s.time_taken ASC`,[exam.id])).rows;
+  res.json({exam, questions, submissions: subs});
+});
+app.post('/api/admin/exam', requireAdmin, async (req,res)=>{
+  const courseId = Number(req.body.course_id);
+  const old = (await pool.query('SELECT id FROM exams WHERE course_id=$1',[courseId])).rows[0];
+  if(old) return res.json({ok:false,msg:'فيه امتحان موجود للكورس ده — امسحه الأول'});
+  await pool.query('INSERT INTO exams(course_id,title,duration_minutes) VALUES($1,$2,$3)',
+    [courseId, req.body.title||'امتحان', Number(req.body.duration_minutes)||30]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/status', requireAdmin, async (req,res)=>{
+  const st = req.body.status;
+  if(!['open','closed','results'].includes(st)) return res.json({ok:false,msg:'حالة غير صحيحة'});
+  await pool.query('UPDATE exams SET status=$1 WHERE id=$2',[st, Number(req.body.exam_id)]);
+  if(st==='open'){
+    const ex = (await pool.query('SELECT * FROM exams WHERE id=$1',[Number(req.body.exam_id)])).rows[0];
+    if(ex){
+      const c = (await pool.query('SELECT name FROM courses WHERE id=$1',[ex.course_id])).rows[0];
+      const enr = (await pool.query('SELECT user_id FROM enrollments WHERE course_id=$1',[ex.course_id])).rows;
+      for(const e of enr.rows) await notify(e.user_id, `📝 تم فتح امتحان في كورس ${c?c.name:''} — ادخل الكورس وابدأ الآن!`);
+    }
+  }
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/delete', requireAdmin, async (req,res)=>{
+  const examId = Number(req.body.exam_id);
+  await pool.query('DELETE FROM submissions WHERE exam_id=$1',[examId]);
+  await pool.query('DELETE FROM questions WHERE exam_id=$1',[examId]);
+  await pool.query('DELETE FROM exams WHERE id=$1',[examId]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/question', requireAdmin, async (req,res)=>{
+  const {exam_id,type,text,points,options,order_items,correct} = req.body;
+  if(!text) return res.json({ok:false,msg:'اكتب نص السؤال'});
+  await pool.query(
+    'INSERT INTO questions(exam_id,type,text,points,options,order_items,correct) VALUES($1,$2,$3,$4,$5,$6,$7)',
+    [Number(exam_id), type, text, Number(points)||1,
+     options?JSON.stringify(options):null,
+     order_items?JSON.stringify(order_items):null,
+     correct||null]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/question/delete', requireAdmin, async (req,res)=>{
+  await pool.query('DELETE FROM questions WHERE id=$1',[Number(req.body.id)]);
+  res.json({ok:true});
+});
+app.post('/api/admin/exam/grade', requireAdmin, async (req,res)=>{
+  const subId = Number(req.body.submission_id);
+  const grades = req.body.grades || {};
+  const essayTotal = Object.values(grades).reduce((a,b)=>a+(Number(b)||0),0);
+  await pool.query('UPDATE submissions SET essay_score=$1, essay_pending=0 WHERE id=$2',[essayTotal, subId]);
+  res.json({ok:true});
+});
+
+const initPromise = initDB();
+let initDone = false;
+if(!process.env.VERCEL){
+  initPromise.then(()=>{
+    app.listen(PORT, ()=> console.log('SERVER UP ON PORT ' + PORT));
+  }).catch(e=>{
+    console.log('DB ERROR: ' + e.message);
+    process.exit(1);
+  });
+}
+module.exports = async (req, res) => {
+  if (!initDone) { await initPromise; initDone = true; }
+  app(req, res);
 };
