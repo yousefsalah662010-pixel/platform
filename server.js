@@ -1,4 +1,4 @@
-// ═══════════ منصة يوسف صلاح - v2 (امتحانات + كتب + تعطيل حسابات) ═══════════
+// ═══════════ منصة يوسف صلاح - v3 (إشعارات + متابعة دروس + صورة شخصية) ═══════════
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
@@ -59,6 +59,40 @@ async function initDB(){
     answers TEXT, score REAL DEFAULT 0, essay_score REAL DEFAULT 0,
     essay_pending INTEGER DEFAULT 0, time_taken INTEGER DEFAULT 0,
     submitted_at TIMESTAMP DEFAULT NOW(), UNIQUE(exam_id, user_id))`);
+  // ── جديد v3 ──
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attempts_left INTEGER DEFAULT 3`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_call INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS notifications(
+    id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
+    read INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS lesson_views(
+    user_id INTEGER NOT NULL, lesson_id INTEGER NOT NULL,
+    viewed_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(user_id, lesson_id))`);
+}
+
+async function notify(userId, text){
+  await pool.query('INSERT INTO notifications(user_id,text) VALUES($1,$2)',[userId,text]);
+}
+
+// ── فحص تراكم الدروس: لو راكم درسين يحصل خصم محاولات/تبليغ/تعطيل ──
+async function checkAccumulation(userId, courseId){
+  const total = (await pool.query('SELECT COUNT(*)::int AS n FROM lessons WHERE course_id=$1',[courseId])).rows[0].n;
+  const viewed = (await pool.query(`SELECT COUNT(*)::int AS n FROM lesson_views lv
+    JOIN lessons l ON l.id=lv.lesson_id WHERE lv.user_id=$1 AND l.course_id=$2`,[userId,courseId])).rows[0].n;
+  if(total - viewed < 2) return;
+  const u = (await pool.query('SELECT * FROM users WHERE id=$1',[userId])).rows[0];
+  if(!u || u.disabled) return;
+  if(u.attempts_left > 0){
+    await notify(userId, `⚠️ لقد راكمت الدرس السابق لديك و لديك ${u.attempts_left} محاولات و بعدها سيتم ابلاغ ولي الامر و في المره الثانيه سيتم الغاء تفعيل حسابك و ستحتاج لمكالمة الدعم عبر ولي الامر علي الرقم 01283674859 لتفعيل الحساب`);
+    await pool.query('UPDATE users SET attempts_left=$1 WHERE id=$2',[u.attempts_left-1,userId]);
+  } else if(!u.parent_call){
+    await pool.query('UPDATE users SET parent_call=1 WHERE id=$1',[userId]);
+    await notify(userId, '📞 تم ابلاغ الإدارة بضرورة الاتصال بولي أمرك — يرجى متابعة الدروس فورًا');
+  } else {
+    await pool.query('UPDATE users SET disabled=1 WHERE id=$1',[userId]);
+    await notify(userId, '🚫 تم الغاء تفعيل حسابك لعدم متابعة الدروس — تواصل مع الدعم عبر ولي الأمر لتفعيل الحساب');
+  }
 }
 
 const app = express();
@@ -80,6 +114,7 @@ function requireAdmin(req,res,next){
   next();
 }
 
+// ═══════════ حسابات الطلاب ═══════════
 app.post('/api/signup', async (req,res)=>{
   const {first,last,phone,parent,email,pass,grade,gender} = req.body;
   if(!first||!last||!phone||!parent||!email||!pass||!grade||!gender)
@@ -122,6 +157,26 @@ app.get('/api/me', requireLogin, async (req,res)=>{
   res.json({user: cleanUser(u), enrollments: enr.rows, books: bk.rows});
 });
 
+// ── الصورة الشخصية ──
+app.post('/api/upload-pic', requireLogin, async (req,res)=>{
+  const pic = String(req.body.pic||'');
+  if(!pic.startsWith('data:image/') || pic.length > 900000)
+    return res.json({ok:false,msg:'الصورة كبيرة أو غير صالحة'});
+  await pool.query('UPDATE users SET profile_pic=$1 WHERE id=$2',[pic, req.session.userId]);
+  res.json({ok:true});
+});
+
+// ═══════════ الإشعارات ═══════════
+app.get('/api/notifications', requireLogin, async (req,res)=>{
+  const rows = (await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY id DESC LIMIT 50',[req.session.userId])).rows;
+  res.json({rows, unread: rows.filter(r=>!r.read).length});
+});
+app.post('/api/notifications/read', requireLogin, async (req,res)=>{
+  await pool.query('UPDATE notifications SET read=1 WHERE user_id=$1',[req.session.userId]);
+  res.json({ok:true});
+});
+
+// ═══════════ الكورسات ═══════════
 app.get('/api/courses', async (req,res)=>{
   res.json((await pool.query('SELECT * FROM courses ORDER BY id')).rows);
 });
@@ -149,9 +204,22 @@ app.get('/api/course/:id', requireLogin, async (req,res)=>{
   if(!enr) return res.status(403).json({error:'أنت مش مشترك في الكورس ده'});
   if(new Date(enr.expires_at) < new Date()) return res.status(403).json({error:'انتهى شهر الاشتراك'});
   const lessons = (await pool.query('SELECT * FROM lessons WHERE course_id=$1 ORDER BY id',[courseId])).rows;
-  res.json({lessons, expires_at: enr.expires_at});
+  const vw = await pool.query('SELECT lesson_id FROM lesson_views WHERE user_id=$1',[req.session.userId]);
+  res.json({lessons, viewed: vw.rows.map(v=>v.lesson_id), expires_at: enr.expires_at});
 });
 
+// ── تعليم الدرس كمسموع ──
+app.post('/api/lesson-viewed', requireLogin, async (req,res)=>{
+  const lid = Number(req.body.lesson_id);
+  const l = (await pool.query('SELECT * FROM lessons WHERE id=$1',[lid])).rows[0];
+  if(!l) return res.json({ok:false});
+  const enr = await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,l.course_id]);
+  if(!enr.rows.length) return res.json({ok:false});
+  await pool.query('INSERT INTO lesson_views(user_id,lesson_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[req.session.userId,lid]);
+  res.json({ok:true});
+});
+
+// ═══════════ الامتحانات (للطلاب) ═══════════
 app.get('/api/exam/:courseId', requireLogin, async (req,res)=>{
   const courseId = Number(req.params.courseId);
   const enr = (await pool.query('SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2',[req.session.userId,courseId])).rows[0];
@@ -216,6 +284,7 @@ app.get('/api/exam/:courseId/honor', async (req,res)=>{
   res.json({status:'results', examTitle: exam.title, results: rows});
 });
 
+// ═══════════ الكتب ═══════════
 app.get('/api/books', async (req,res)=>{
   res.json((await pool.query('SELECT * FROM books ORDER BY id DESC')).rows);
 });
@@ -229,6 +298,7 @@ app.post('/api/activate-book', requireLogin, async (req,res)=>{
   res.json({ok:true});
 });
 
+// ═══════════ الدعم ═══════════
 app.post('/api/support', requireLogin, async (req,res)=>{
   const text = (req.body.text||'').trim();
   if(!text) return res.json({ok:false});
@@ -239,6 +309,7 @@ app.get('/api/my-messages', requireLogin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM messages WHERE user_id=$1 ORDER BY id DESC',[req.session.userId])).rows);
 });
 
+// ═══════════ لوحة المدير ═══════════
 app.post('/api/admin/login', (req,res)=>{
   if(req.body.username===ADMIN_USER && req.body.password===ADMIN_PASS){
     req.session.admin = true; return res.json({ok:true});
@@ -252,8 +323,10 @@ app.get('/api/admin/messages', requireAdmin, async (req,res)=>{
     FROM messages m JOIN users u ON u.id=m.user_id ORDER BY m.id DESC`)).rows);
 });
 app.post('/api/admin/reply', requireAdmin, async (req,res)=>{
+  const m = (await pool.query('SELECT * FROM messages WHERE id=$1',[Number(req.body.id)])).rows[0];
   await pool.query('UPDATE messages SET reply=$1, replied_at=$2 WHERE id=$3',
     [req.body.reply, new Date().toLocaleString('ar-EG'), Number(req.body.id)]);
+  if(m) await notify(m.user_id, '💬 الدعم رد على رسالتك — افتح قسم "ردود الدعم"');
   res.json({ok:true});
 });
 
@@ -263,8 +336,10 @@ app.get('/api/admin/users', requireAdmin, async (req,res)=>{
 app.post('/api/admin/toggle-user', requireAdmin, async (req,res)=>{
   const u = (await pool.query('SELECT disabled FROM users WHERE id=$1',[Number(req.body.user_id)])).rows[0];
   if(!u) return res.json({ok:false});
-  await pool.query('UPDATE users SET disabled=$1 WHERE id=$2',[u.disabled?0:1, Number(req.body.user_id)]);
-  res.json({ok:true, disabled: u.disabled?0:1});
+  const newVal = u.disabled?0:1;
+  await pool.query('UPDATE users SET disabled=$1 WHERE id=$2',[newVal, Number(req.body.user_id)]);
+  if(newVal===0) await pool.query('UPDATE users SET attempts_left=3, parent_call=0 WHERE id=$1',[Number(req.body.user_id)]);
+  res.json({ok:true, disabled:newVal});
 });
 
 app.get('/api/admin/courses', requireAdmin, async (req,res)=>{
@@ -274,6 +349,8 @@ app.post('/api/admin/courses', requireAdmin, async (req,res)=>{
   const {name,description,price,emoji} = req.body;
   await pool.query('INSERT INTO courses(name,description,price,emoji) VALUES($1,$2,$3,$4)',
     [name,description,Number(price)||0,emoji||'📚']);
+  const all = (await pool.query('SELECT id FROM users WHERE disabled=0')).rows;
+  for(const u of all.rows) await notify(u.id, `🎓 كورس جديد اتضاف على المنصة: ${name}`);
   res.json({ok:true});
 });
 
@@ -300,6 +377,12 @@ app.post('/api/admin/lessons', requireAdmin, async (req,res)=>{
   if(!title) return res.json({ok:false,msg:'اكتب عنوان الدرس'});
   await pool.query('INSERT INTO lessons(course_id,title,video_url,description) VALUES($1,$2,$3,$4)',
     [Number(course_id), title, video_url||null, description||null]);
+  const course = (await pool.query('SELECT name FROM courses WHERE id=$1',[Number(course_id)])).rows[0];
+  const enr = (await pool.query('SELECT user_id FROM enrollments WHERE course_id=$1',[Number(course_id)])).rows;
+  for(const e of enr.rows){
+    await notify(e.user_id, `🎬 درس جديد في كورس ${course?course.name:''}: ${title}`);
+    await checkAccumulation(e.user_id, Number(course_id));
+  }
   res.json({ok:true});
 });
 app.get('/api/admin/lessons', requireAdmin, async (req,res)=>{
@@ -344,6 +427,14 @@ app.post('/api/admin/exam/status', requireAdmin, async (req,res)=>{
   const st = req.body.status;
   if(!['open','closed','results'].includes(st)) return res.json({ok:false,msg:'حالة غير صحيحة'});
   await pool.query('UPDATE exams SET status=$1 WHERE id=$2',[st, Number(req.body.exam_id)]);
+  if(st==='open'){
+    const ex = (await pool.query('SELECT * FROM exams WHERE id=$1',[Number(req.body.exam_id)])).rows[0];
+    if(ex){
+      const c = (await pool.query('SELECT name FROM courses WHERE id=$1',[ex.course_id])).rows[0];
+      const enr = (await pool.query('SELECT user_id FROM enrollments WHERE course_id=$1',[ex.course_id])).rows;
+      for(const e of enr.rows) await notify(e.user_id, `📝 تم فتح امتحان في كورس ${c?c.name:''} — ادخل الكورس وابدأ الآن!`);
+    }
+  }
   res.json({ok:true});
 });
 app.post('/api/admin/exam/delete', requireAdmin, async (req,res)=>{
@@ -376,11 +467,9 @@ app.post('/api/admin/exam/grade', requireAdmin, async (req,res)=>{
   res.json({ok:true});
 });
 
-let ready = false;
-initDB().then(()=>{ ready = true; }).catch(e=>{
+initDB().then(()=>{
+  app.listen(PORT, ()=> console.log('✅ السيرفر شغال على المنفذ ' + PORT));
+}).catch(e=>{
   console.log('❌ مشكلة في قاعدة البيانات: ' + e.message);
+  process.exit(1);
 });
-module.exports = async (req, res) => {
-  if (!ready) { await initDB(); ready = true; }
-  app(req, res);
-};
