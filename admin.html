@@ -202,7 +202,13 @@ async function loadCoursesTab(){
   COURSES = await fetch('/api/admin/courses').then(r=>r.json());
   document.getElementById('coursesList').innerHTML = COURSES.map(c=>`
     <div class="card">
-      <b>${esc(c.name)}</b> — ${c.price} جنيه
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <b>${esc(c.emoji||'📚')} ${esc(c.name)}</b>
+        <div>
+          <span style="color:#92400e;font-weight:700;">${c.price} جنيه</span>
+          <button class="btnRed btnSm" onclick="delCourse(${c.id}, '${esc(c.name).replace(/'/g,"\\'")}')">🗑️ حذف الكورس</button>
+        </div>
+      </div>
       <div style="margin-top:12px;">
         <input id="lessonTitle-${c.id}" placeholder="عنوان الدرس الجديد" style="margin-bottom:8px;">
         <input id="lessonVideo-${c.id}" placeholder="رابط فيديو YouTube أو mp4" style="margin-bottom:8px;">
@@ -212,6 +218,14 @@ async function loadCoursesTab(){
       <div id="lessons-${c.id}" style="margin-top:12px;"></div>
     </div>`).join('') || '<div class="card">مفيش كورسات</div>';
   for(const c of COURSES) loadLessonsList(c.id);
+}
+async function delCourse(id, name){
+  if(!confirm(`⚠️ حذف كورس "${name}" بالكامل؟\n\nهيتمسح: كل دروسه + امتحانه + رموزه + اشتراكات الطلاب فيه!\n\nالعملية مش بترجع تاني!`)) return;
+  if(!confirm('متأكد 100%؟ آخر تأكيد 😅')) return;
+  const r = await fetch('/api/admin/courses/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  const d = await r.json();
+  if(d.ok){ alert('✅ الكورس اتمسح'); loadCoursesTab(); }
+  else alert(d.msg || 'حصل خطأ');
 }
 async function loadLessonsList(cid){
   const ls = await fetch('/api/admin/lessons?course_id='+cid).then(r=>r.json());
