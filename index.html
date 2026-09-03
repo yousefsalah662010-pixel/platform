@@ -45,9 +45,9 @@
   .heroText { flex:1; }
   .heroText h1 { font-size:42px; color:#1e3a8a; margin-bottom:15px; }
   .heroText p { font-size:18px; color:#475569; line-height:1.9; white-space:pre-line; }
-  .imgPlaceholder { width:400px; height:430px; 
-    border-radius:20px; display:flex; align-items:center; justify-content:center;
-   ; font-size:18px; font-weight:700;; text-align:center; }
+  .imgPlaceholder { width:320px; height:380px; background:linear-gradient(135deg,#3b82f6,#1e3a8a);
+    border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; font-size:18px; font-weight:700; box-shadow:0 15px 40px rgba(30,58,138,.3); text-align:center; }
   .imgPlaceholder .icon { font-size:60px; margin-bottom:15px; }
 
   .section { max-width:1200px; margin:auto; padding:50px 20px; }
@@ -96,14 +96,19 @@
   .noReply { text-align:center; color:#94a3b8; padding:40px; font-size:16px; }
 
   #coursePage { position:fixed; inset:0; background:#f1f5f9; z-index:200; overflow-y:auto; }
-  .courseTop { background:linear-gradient(135deg,#1e3a8a,#3b82f6); color:#fff; padding:25px 20px;
+  .courseTop { background:linear-gradient(135deg,#1e3a8a,#3b82f6); color:#fff; padding:20px;
     position:sticky; top:0; z-index:10; }
-  .courseTopInner { max-width:1000px; margin:auto; display:flex; justify-content:space-between;
-    align-items:center; gap:15px; flex-wrap:wrap; }
+  .courseTopInner { max-width:1000px; margin:auto; }
+  .courseTopInner h2 { font-size:22px; margin-bottom:10px; }
+  .topRow { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
   .btnClose { background:rgba(255,255,255,.2); color:#fff; border:none; padding:10px 20px; border-radius:8px;
     font-family:'Cairo'; font-weight:700; cursor:pointer; }
   .timer { background:rgba(255,255,255,.15); padding:8px 18px; border-radius:25px; font-weight:700; font-size:14px; }
   .timer span { color:#fbbf24; }
+  .cpTabs { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .cpTabs button { padding:9px 20px; border:none; border-radius:8px; font-family:'Cairo'; font-weight:700;
+    font-size:14px; background:rgba(255,255,255,.15); color:#dbeafe; cursor:pointer; }
+  .cpTabs button.active { background:#fff; color:#1e3a8a; }
   .lessons { max-width:1000px; margin:auto; padding:30px 20px; }
   .lesson { background:#fff; border-radius:16px; padding:20px; margin-bottom:20px; box-shadow:0 5px 15px rgba(0,0,0,.06); }
   .lesson h4 { color:#1e3a8a; margin-bottom:12px; font-size:18px; }
@@ -112,6 +117,47 @@
     font-weight:700; margin-bottom:12px; }
   .videoBox .icon { font-size:50px; margin-bottom:10px; }
   .lesson p { color:#475569; font-size:14px; line-height:1.8; }
+
+  /* امتحان */
+  .examIntro { background:#fff; border-radius:16px; padding:30px; max-width:700px; margin:auto;
+    text-align:center; box-shadow:0 5px 15px rgba(0,0,0,.06); }
+  .examIntro h3 { color:#1e3a8a; font-size:24px; margin-bottom:10px; }
+  .examIntro p { color:#64748b; margin-bottom:20px; }
+  .qCard { background:#fff; border-radius:16px; padding:22px; margin-bottom:18px; box-shadow:0 5px 15px rgba(0,0,0,.06); }
+  .qCard .qNum { background:#1e3a8a; color:#fff; font-size:12px; font-weight:700; padding:3px 12px;
+    border-radius:20px; display:inline-block; margin-bottom:10px; }
+  .qCard .qType { background:#f1f5f9; color:#64748b; font-size:11px; padding:3px 10px; border-radius:20px; margin-right:6px; }
+  .qCard h4 { font-size:16px; margin-bottom:14px; line-height:1.7; }
+  .optRow { display:flex; align-items:center; gap:10px; padding:11px 14px; border:2px solid #e2e8f0;
+    border-radius:10px; margin-bottom:8px; cursor:pointer; transition:.2s; font-size:14px; }
+  .optRow:hover { border-color:#93c5fd; }
+  .optRow.sel { border-color:#1e3a8a; background:#eff6ff; }
+  .optRow input[type=radio] { accent-color:#1e3a8a; }
+  .ordRow { display:flex; align-items:center; gap:10px; padding:11px 14px; background:#f8fafc;
+    border:2px solid #e2e8f0; border-radius:10px; margin-bottom:8px; font-size:14px; cursor:grab; }
+  .ordRow .num { background:#1e3a8a; color:#fff; width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+  .essayTa { width:100%; min-height:90px; padding:12px; border:2px solid #e2e8f0; border-radius:10px;
+    font-family:'Cairo'; font-size:14px; resize:vertical; }
+  .btnSubmitExam { width:100%; max-width:700px; display:block; margin:20px auto; padding:16px;
+    background:linear-gradient(135deg,#059669,#10b981); color:#fff; border:none; border-radius:12px;
+    font-family:'Cairo'; font-weight:900; font-size:18px; cursor:pointer; }
+
+  /* لوحة شرف */
+  .podium { max-width:700px; margin:auto; }
+  .honorRow { background:#fff; border-radius:14px; padding:16px 20px; margin-bottom:12px;
+    display:flex; align-items:center; gap:15px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
+  .honorRow .rank { font-size:24px; width:45px; text-align:center; font-weight:900; flex-shrink:0; }
+  .honorRow .name { flex:1; font-weight:700; }
+  .honorRow .name small { display:block; color:#94a3b8; font-weight:400; font-size:12px; }
+  .honorRow .sc { background:#eff6ff; color:#1e3a8a; font-weight:900; padding:6px 14px; border-radius:20px; font-size:14px; }
+  .honorRow .tm { color:#64748b; font-size:12px; }
+  .honorRow.r1 { background:linear-gradient(135deg,#fef9c3,#fde68a); }
+  .honorRow.r2 { background:linear-gradient(135deg,#f1f5f9,#e2e8f0); }
+  .honorRow.r3 { background:linear-gradient(135deg,#ffedd5,#fed7aa); }
+
+  .pdfLink { display:inline-block; margin-top:8px; background:#eff6ff; color:#1e3a8a; font-weight:700;
+    padding:8px 18px; border-radius:8px; text-decoration:none; font-size:13px; }
 
   footer { background:#1e293b; color:#94a3b8; text-align:center; padding:25px; font-size:14px; margin-top:50px; }
   @media(max-width:800px){
@@ -123,7 +169,6 @@
 </head>
 <body>
 
-<!-- ═══ شاشة الدخول ═══ -->
 <div id="authScreen">
   <div class="authBox">
     <h1>📚 منصة يوسف صلاح</h1>
@@ -171,7 +216,6 @@
   </div>
 </div>
 
-<!-- ═══ الموقع ═══ -->
 <div id="app" class="hidden">
   <header>
     <div class="headerInner">
@@ -179,6 +223,7 @@
       <nav>
         <a onclick="goTo('home')">من هو يوسف صلاح</a>
         <a onclick="goTo('courses')">الكورسات</a>
+        <a onclick="goTo('books')">الكتب 📖</a>
         <a onclick="goTo('profile')">الملف الشخصي</a>
         <a onclick="whatsappGeneral()">الدفع والاشتراكات</a>
         <a onclick="goTo('support')">الدعم</a>
@@ -188,28 +233,14 @@
     </div>
   </header>
 
-  <!-- الهيرو: النص يمين + الصورة شمال -->
   <section id="home" class="hero">
     <div class="heroText">
       <h1>أهلاً بك 👋</h1>
-      <!-- ✏️ اكتب خبراتك هنا بدل النص ده -->
-      <p id="heroAbout">​مرحباً بكم! أنا يوسف صلاح
-​رحلتي في عالم التكنولوجيا بدأت بشغف كبير لتعلم البرمجة؛ حيث تدربت وتعلمت لغات أساسية مثل HTML وCSS وJavaScript، وقمت ببناء العديد من المواقع والمنصات الرقمية بنفسي—وهذه المنصة التي بين أيديكم هي إحدى ثمار هذا العمل والتطوير المستمر.
-​خلال مسيرتي، لم أكتفِ بالتعلم فقط، بل قمت بتعليم العديد من الطلاب ومساعدتهم على دخول عالم البرمجة، وحققنا معاً نتائج ومميزات رائعة!
-​ماذا ننتظر في هذه الرحلة؟
-سنخوض معاً رحلة ممتعة وشيقة جداً في هذا المنهج. وبنهايته —بإذن الله— ستكونون قادرين على:
-​بناء وتطوير المواقع الإلكترونية.
-​إنشاء التطبيقات والالعاب.
-​اكتساب مهارات جانبية هامة مثل تحسين اللغة الإنجليزية ولغات برمجية مختلفة تدعم بناء تطبيقات الويب والألعاب.
-​هدفنا الأساسي من هذه المنصة هو تحويل الفكر من مجرد التسلية إلى الإبداع؛ عليك أن تصنع اللعبة لا أن تكتفي بلعبها فقط، لتكون منتجاً وفاعلاً في هذا العالم، لا مجرد مستهلك!
-​أتمنى لكم رحلة تعليمية ملهمة ومملوءة بالإنجازات  </p>
+      <p id="heroAbout">أنا يوسف صلاح، معلم متخصص...
+اكتب خبراتك هنا.</p>
     </div>
     <div class="heroImg">
-      <!-- 📷 لحط صورتك: حط صورتك جوه فولدر public وسميها photo.jpg وشيل التعليق من السطر اللي تحت -->
-      <!-- <img src="photo.jpg" style="width:320px;height:380px;object-fit:cover;border-radius:20px;"> -->
-      <div class="imgPlaceholder"><div class="icon"></div>
-        <div><img src="WhatsApp Image 2026-09-02 at 10.20.12 PM.jpeg" style="width:320px;height:380px;object-fit:cover;border-radius:20px;box-shadow:0 15px 40px rgba(30,58,138,.3);"></div>
-      </div>
+      <img src="photo.jpg" style="width:320px;height:380px;object-fit:cover;border-radius:20px;box-shadow:0 15px 40px rgba(30,58,138,.3);">
     </div>
   </section>
 
@@ -217,6 +248,12 @@
     <h2 class="sectionTitle">🎓 الكورسات المتاحة</h2>
     <p class="sectionSub">اشترك → ابعت رسالة واتساب → هتستلم رمز الدخول بعد الدفع</p>
     <div class="coursesGrid" id="coursesGrid"></div>
+  </section>
+
+  <section id="books" class="section">
+    <h2 class="sectionTitle">📖 الكتب</h2>
+    <p class="sectionSub">اشترِ الكتاب → ابعت رسالة واتساب → هتستلم رمز التفعيل والكتاب PDF</p>
+    <div class="coursesGrid" id="booksGrid"></div>
   </section>
 
   <section id="profile" class="section">
@@ -244,27 +281,38 @@
   <footer>© 2025 منصة يوسف صلاح التعليمية - جميع الحقوق محفوظة</footer>
 </div>
 
-<!-- ═══ صفحة الكورس ═══ -->
+<!-- صفحة الكورس -->
 <div id="coursePage" class="hidden">
   <div class="courseTop">
     <div class="courseTopInner">
-      <h2 id="cpTitle"></h2>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div class="timer">⏳ باقي للاشتراك: <span id="cpTimer"></span></div>
+      <div class="topRow">
+        <h2 id="cpTitle"></h2>
         <button class="btnClose" onclick="closeCourse()">✕ رجوع</button>
+      </div>
+      <div class="cpTabs">
+        <button id="cpTab-lessons" class="active" onclick="cpTab('lessons')">🎬 الدروس</button>
+        <button id="cpTab-exam" onclick="cpTab('exam')">📝 الامتحان</button>
+        <button id="cpTab-honor" onclick="cpTab('honor')">🏆 لوحة الشرف</button>
       </div>
     </div>
   </div>
-  <div class="lessons" id="cpLessons"></div>
+  <div class="lessons">
+    <div id="cpLessons"></div>
+    <div id="cpExam" class="hidden"></div>
+    <div id="cpHonor" class="hidden"></div>
+  </div>
 </div>
 
 <script>
-let me = null, courses = [], timerInt = null;
-const WA_NUMBER = '201283674859'; // رقم الواتساب بتاعك (01283674859 بصيغة دولية)
+let me = null, courses = [], timerInt = null, examInt = null,
+    examAnswers = {}, examData = null, examStart = 0, currentCourse = null;
+const WA_NUMBER = '201283674859';
 
 const esc = s => String(s??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const waLink = t => 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(t);
 const goTo = id => { document.getElementById(id).scrollIntoView({behavior:'smooth'}); };
+const fmtTime = s => { const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);
+  return (h?h+' ساعة ':'')+(m?m+' دقيقة ':'')+x+' ثانية'; };
 
 function switchTab(t){
   document.getElementById('tabLogin').classList.toggle('active', t==='login');
@@ -275,21 +323,29 @@ function switchTab(t){
 
 async function doLogin(e){
   e.preventDefault();
-  const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({email:loginEmail.value, pass:loginPass.value})});
-  const d = await r.json();
-  if(d.ok) location.reload();
-  else document.getElementById('loginMsg').innerHTML = '<div class="error">'+esc(d.msg)+'</div>';
+  try {
+    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:loginEmail.value, pass:loginPass.value})});
+    const d = await r.json();
+    if(d.ok) location.reload();
+    else document.getElementById('loginMsg').innerHTML = '<div class="error">'+esc(d.msg)+'</div>';
+  } catch(err){
+    document.getElementById('loginMsg').innerHTML = '<div class="error">السيرفر مش شغال</div>';
+  }
 }
 
 async function doSignup(e){
   e.preventDefault();
   const body = {first:suFirst.value,last:suLast.value,phone:suPhone.value,parent:suParent.value,
     email:suEmail.value,pass:suPass.value,grade:suGrade.value,gender:suGender.value};
-  const r = await fetch('/api/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const d = await r.json();
-  if(d.ok) location.reload();
-  else document.getElementById('signupMsg').innerHTML = '<div class="error">'+esc(d.msg)+'</div>';
+  try {
+    const r = await fetch('/api/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await r.json();
+    if(d.ok) location.reload();
+    else document.getElementById('signupMsg').innerHTML = '<div class="error">'+esc(d.msg)+'</div>';
+  } catch(err){
+    document.getElementById('signupMsg').innerHTML = '<div class="error">السيرفر مش شغال</div>';
+  }
 }
 
 async function doLogout(){ await fetch('/api/logout',{method:'POST'}); location.reload(); }
@@ -297,7 +353,7 @@ async function doLogout(){ await fetch('/api/logout',{method:'POST'}); location.
 function showApp(){
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  renderProfile(); loadCourses(); loadReplies();
+  renderProfile(); loadReplies(); loadBooks();
 }
 
 function renderProfile(){
@@ -308,6 +364,11 @@ function renderProfile(){
     return `<div class="profileRow"><span class="lbl">${esc(c?c.name:'كورس')}</span>
       <span class="val">${active?'✅ ساري لـ '+new Date(e.expires_at).toLocaleDateString('ar-EG'):'⌛ منتهي'}</span></div>`;
   }).join('');
+  const myBooks = (me.books||[]).map(b=>{
+    const bk = allBooks.find(x=>x.id===b.book_id);
+    return `<div class="profileRow"><span class="lbl">📖 ${esc(bk?bk.title:'كتاب')}</span>
+      <span class="val">✅ مفعّل</span></div>`;
+  }).join('');
   document.getElementById('profileCard').innerHTML = `
     <div class="profileRow"><span class="lbl">الاسم</span><span class="val">${esc(u.first_name+' '+u.last_name)}</span></div>
     <div class="profileRow"><span class="lbl">رقم الهاتف</span><span class="val">${esc(u.phone)}</span></div>
@@ -316,7 +377,55 @@ function renderProfile(){
     <div class="profileRow"><span class="lbl">السنة الدراسية</span><span class="val">${esc(u.grade)}</span></div>
     <div class="profileRow"><span class="lbl">النوع</span><span class="val">${esc(u.gender)}</span></div>
     <div class="profileRow"><span class="lbl">تاريخ التسجيل</span><span class="val">${esc(u.created_at)}</span></div>
-    ${enrolls?'<h3 style="margin:20px 0 5px;color:#1e3a8a;">اشتراكاتي:</h3>'+enrolls:''}`;
+    ${enrolls?'<h3 style="margin:20px 0 5px;color:#1e3a8a;">اشتراكاتي:</h3>'+enrolls:''}
+    ${myBooks?'<h3 style="margin:20px 0 5px;color:#1e3a8a;">كتبي:</h3>'+myBooks:''}`;
+}
+
+let allBooks = [];
+async function loadBooks(){
+  allBooks = await fetch('/api/books').then(r=>r.json());
+  document.getElementById('booksGrid').innerHTML = allBooks.length ? allBooks.map(b=>{
+    const owned = (me.books||[]).some(x=>x.book_id===b.id);
+    let bottom = '';
+    if(owned){
+      bottom = `<div class="unlockedBadge">✅ تفعيلك ساري</div>
+        ${b.pdf_url?`<a class="pdfLink" href="${esc(b.pdf_url)}" target="_blank">⬇️ افتح الكتاب PDF</a>`:'<p style="font-size:12px;color:#94a3b8;margin-top:8px;">الملف هيضاف قريب</p>'}`;
+    } else {
+      bottom = `<div class="codeArea">
+          <label>عندك رمز التفعيل؟</label>
+          <div class="codeRow">
+            <input id="bcode-${b.id}" placeholder="رمز الكتاب">
+            <button onclick="activateBook(${b.id})">تفعيل</button>
+          </div>
+          <div class="codeMsg" id="bmsg-${b.id}"></div>
+        </div>
+        <button class="btnSub" style="margin-top:15px;" onclick="buyBook(${b.id})">💰 شراء الكتاب</button>`;
+    }
+    return `<div class="courseCard">
+      <div class="courseImg" style="background:linear-gradient(135deg,#d97706,#92400e)">${b.emoji||'📖'}</div>
+      <div class="courseBody">
+        <h3>${esc(b.title)}</h3>
+        <p class="desc">${esc(b.description||'')}</p>
+        <div class="price">${b.price} جنيه</div>
+        ${bottom}
+      </div>
+    </div>`;
+  }).join('') : '<div class="noReply">مفيش كتب متاحة لسه</div>';
+}
+
+function buyBook(id){
+  const b = allBooks.find(x=>x.id===id);
+  window.open(waLink(`أنا ${me.user.first_name} أريد شراء كتاب ${b.title}`));
+}
+
+async function activateBook(bookId){
+  const msg = document.getElementById('bmsg-'+bookId);
+  const code = document.getElementById('bcode-'+bookId).value.trim();
+  const r = await fetch('/api/activate-book',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({bookId, code})});
+  const d = await r.json();
+  if(d.ok){ msg.style.color='#166534'; msg.textContent='✅ تم تفعيل الكتاب!'; setTimeout(()=>{loadBooks();renderProfile();},900); }
+  else { msg.style.color='#b91c1c'; msg.textContent='❌ '+esc(d.msg); }
 }
 
 async function loadCourses(){
@@ -325,6 +434,7 @@ async function loadCourses(){
     fetch('/api/me').then(r=>r.json())
   ]);
   courses = cs; me = m;
+  renderProfile();
   document.getElementById('coursesGrid').innerHTML = courses.map(c=>{
     const enr = me.enrollments.find(e=>e.course_id===c.id);
     const active = enr && new Date(enr.expires_at) > new Date();
@@ -387,7 +497,17 @@ function lessonHTML(l){
   return `<div class="lesson"><h4>${esc(l.title)}</h4>${media}${l.description?'<p>'+esc(l.description)+'</p>':''}</div>`;
 }
 
+function cpTab(t){
+  ['lessons','exam','honor'].forEach(x=>{
+    document.getElementById('cpTab-'+x).classList.toggle('active', x===t);
+    document.getElementById('cp'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('hidden', x!==t);
+  });
+  if(t==='exam') loadExam();
+  if(t==='honor') loadHonor();
+}
+
 async function openCourse(id){
+  currentCourse = id;
   const r = await fetch('/api/course/'+id);
   if(!r.ok){ const d = await r.json(); alert(d.error); return; }
   const d = await r.json();
@@ -395,39 +515,171 @@ async function openCourse(id){
   document.getElementById('cpTitle').textContent = c.name;
   document.getElementById('cpLessons').innerHTML = d.lessons.length
     ? d.lessons.map(lessonHTML).join('')
-    : '<div class="noReply">مفيش دروس لسه — هتضيف قريب</div>';
+    : '<div class="noReply">مفيش دروس لسه</div>';
   document.getElementById('coursePage').classList.remove('hidden');
-  startTimer(d.expires_at, d.lessons.length);
+  startTimer(d.expires_at);
+  cpTab('lessons');
   window.scrollTo(0,0);
 }
 
-function startTimer(expires, lessonsCount){
+function startTimer(expires){
   clearInterval(timerInt);
-  const el = document.getElementById('cpTimer');
+  const el = document.getElementById('cpTitle');
   function tick(){
     const diff = new Date(expires) - new Date();
-    if(diff <= 0){
-      el.textContent = 'انتهى ❌';
-      clearInterval(timerInt);
-      document.getElementById('cpLessons').innerHTML =
-        '<div class="noReply">⌛ انتهى شهر الاشتراك — الكورس اتقفل. كلم المدير للتجديد.</div>';
-      return;
-    }
-    const d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000),
-          m=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
-    el.textContent = `${d} يوم ${h} ساعة ${m} دقيقة ${s} ثانية`;
+    if(diff <= 0){ el.title='انتهى الاشتراك'; clearInterval(timerInt); return; }
   }
-  tick(); timerInt = setInterval(tick, 1000);
+  tick();
 }
 
-function closeCourse(){ clearInterval(timerInt); document.getElementById('coursePage').classList.add('hidden'); }
+function closeCourse(){ clearInterval(timerInt); clearInterval(examInt);
+  document.getElementById('coursePage').classList.add('hidden'); }
 
+/* ═══════ الامتحان ═══════ */
+const typeNames = {mcq:'اختيار من متعدد', truefalse:'صح وغلط', order:'ترتيب', essay:'مقالي'};
+
+async function loadExam(){
+  const box = document.getElementById('cpExam');
+  box.innerHTML = '<div class="noReply">جاري التحميل...</div>';
+  const r = await fetch('/api/exam/'+currentCourse);
+  examData = await r.json();
+  if(examData.status==='none'){
+    box.innerHTML = '<div class="noReply">مفيش امتحان متاح في الكورس ده حاليًا</div>'; return;
+  }
+  if(examData.status==='closed'){
+    box.innerHTML = '<div class="noReply">🔒 الامتحان مقفول حاليًا — استنى إعلان المدير</div>'; return;
+  }
+  if(examData.status==='results'){
+    box.innerHTML = `<div class="noReply">📊 نتائج الامتحان ظهرت في <b>لوحة الشرف 🏆</b> — انتقل ليها من فوق!</div>`; return;
+  }
+  if(examData.status==='submitted'){
+    box.innerHTML = `<div class="examIntro"><h3>✅ سلمت الامتحان</h3>
+      <p>درجتك الحالية: <b>${examData.score}</b>${examData.essayPending?'<br><small style="color:#d97706;">فيه سؤال مقالي هيصححه المدير — الدرجة النهائية تظهر في لوحة الشرف</small>':''}</p></div>`;
+    return;
+  }
+  // وضع الامتحان
+  examAnswers = {}; examStart = Date.now();
+  box.innerHTML = `
+    <div class="examIntro" style="margin-bottom:20px;">
+      <h3>📝 ${esc(examData.examTitle)}</h3>
+      <p>مدة الامتحان: <b>${examData.duration} دقيقة</b> — بمجرد ما تدوس "بدأ" العداد هيبدأ ومش هيتوقف!</p>
+      <p style="color:#b91c1c;font-weight:700;">سلم مرة واحدة بس — مفيش رجوع!</p>
+      <button class="btnMain" style="max-width:250px;" onclick="beginExam()">🚀 بدأ الامتحان</button>
+    </div>
+    <div id="examQuestions" class="hidden"></div>`;
+}
+
+function beginExam(){
+  document.getElementById('examQuestions').classList.remove('hidden');
+  renderExamQuestions();
+  let left = examData.duration * 60;
+  const tEl = document.getElementById('cpTimer');
+  examInt = setInterval(()=>{
+    left--;
+    if(left<=0){ clearInterval(examInt); submitExam(true); return; }
+    const m=Math.floor(left/60), s=left%60;
+    if(tEl) tEl.textContent = '⏰ ' + m + ':' + String(s).padStart(2,'0');
+  }, 1000);
+  window.scrollTo(0,0);
+}
+
+function renderExamQuestions(){
+  const box = document.getElementById('examQuestions');
+  box.innerHTML = examData.questions.map((q,i)=>{
+    let body = '';
+    if(q.type==='mcq'){
+      body = (q.options||[]).map((op,j)=>
+        `<div class="optRow" onclick="pick(${q.id},'${esc(String.fromCharCode(65+j))}',this)">
+          <input type="radio" name="q${q.id}"><span>${esc(op)}</span></div>`).join('');
+    } else if(q.type==='truefalse'){
+      body = `<div class="optRow" onclick="pick(${q.id},'صح',this)"><input type="radio" name="q${q.id}"><span>✅ صح</span></div>
+              <div class="optRow" onclick="pick(${q.id},'غلط',this)"><input type="radio" name="q${q.id}"><span>❌ غلط</span></div>`;
+    } else if(q.type==='order'){
+      body = `<div id="ord-${q.id}">` + (q.items||[]).map((it,j)=>
+        `<div class="ordRow" draggable="true" ondragstart="dragS(event)" ondragover="event.preventDefault()"
+          ondrop="dropOrd(event,'${q.id}')"><span class="num">${j+1}</span><span>${esc(it)}</span></div>`).join('') + `</div>
+        <small style="color:#94a3b8;">اسحب العناصر لإعادة ترتيبها (الأول فوق)</small>`;
+    } else if(q.type==='essay'){
+      body = `<textarea class="essayTa" oninput="examAnswers[${q.id}]=examAnswers[${q.id}]||{}; examAnswers[${q.id}].value=this.value"
+        placeholder="اكتب إجابتك هنا..."></textarea>`;
+    }
+    return `<div class="qCard">
+      <span class="qNum">سؤال ${i+1} — ${q.points} درجة</span><span class="qType">${typeNames[q.type]||''}</span>
+      <h4>${esc(q.text)}</h4>
+      ${body}
+    </div>`;
+  }).join('') + `<button class="btnSubmitExam" onclick="submitExam(false)">📨 تسليم الامتحان</button>`;
+}
+
+function pick(qid, val, el){
+  examAnswers[qid] = {value: val};
+  const card = el.closest('.qCard');
+  card.querySelectorAll('.optRow').forEach(r=>r.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+let dragEl = null;
+function dragS(e){ dragEl = e.target; }
+function dropOrd(e, qid){
+  e.preventDefault();
+  const cont = document.getElementById('ord-'+qid);
+  if(!dragEl || !cont || dragEl.parentElement!==cont) return;
+  const rows = [...cont.children];
+  const target = e.target.closest('.ordRow') || cont.lastElementChild;
+  cont.insertBefore(dragEl, target === dragEl ? null : (target.nextElementSibling || null));
+  if(target === dragEl) cont.insertBefore(dragEl, null);
+  [...cont.children].forEach((r,i)=> r.querySelector('.num').textContent = i+1);
+  examAnswers[qid] = {value: [...cont.children].map(r=>r.querySelector('span:last-child').textContent)};
+}
+
+async function submitExam(auto){
+  if(!auto){
+    const answered = Object.keys(examAnswers).length;
+    if(!confirm(`متأكد من التسليم؟ جاوبت على ${answered} سؤال — مش هتقدر تعدل بعدها!`)) return;
+  }
+  clearInterval(examInt);
+  const timeTaken = Math.floor((Date.now()-examStart)/1000);
+  const r = await fetch('/api/exam/'+currentCourse+'/submit',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({answers: Object.entries(examAnswers).map(([qid,v])=>({qid:Number(qid), value:v.value})), time_taken: timeTaken})});
+  const d = await r.json();
+  if(d.ok){
+    document.getElementById('cpExam').innerHTML = `<div class="examIntro"><h3>📨 اتسلم!</h3>
+      <p>درجتك: <b>${d.score}</b>${d.essayPending?'<br><small style="color:#d97706;">فيه مقالي هيصححه المدير — النتيجة النهائية في لوحة الشرف</small>':''}</p></div>`;
+  } else {
+    alert(d.msg||'حصل خطأ');
+    loadExam();
+  }
+}
+
+/* ═══════ لوحة الشرف ═══════ */
+async function loadHonor(){
+  const box = document.getElementById('cpHonor');
+  box.innerHTML = '<div class="noReply">جاري التحميل...</div>';
+  const r = await fetch('/api/exam/'+currentCourse+'/honor');
+  const d = await r.json();
+  if(d.status!=='results'){
+    box.innerHTML = '<div class="noReply">🏆 لوحة الشرف بتظهر لما المدير يعلن نتائج الامتحان</div>'; return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  box.innerHTML = `<h3 style="text-align:center;color:#1e3a8a;margin-bottom:8px;">🏆 لوحة الشرف — ${esc(d.examTitle)}</h3>
+    <p style="text-align:center;color:#64748b;margin-bottom:20px;font-size:13px;">الترتيب: أعلى درجة ← أقل وقت</p>
+    <div class="podium">` + (d.results||[]).map((r,i)=>`
+      <div class="honorRow ${i<3?'r'+(i+1):''}">
+        <div class="rank">${medals[i]||('#'+(i+1))}</div>
+        <div class="name">${esc(r.first_name+' '+r.last_name)}<small>${esc(r.grade||'')}</small></div>
+        <div class="sc">${r.total} درجة${r.essay_pending?' ⏳':''}</div>
+        <div class="tm">⏱ ${fmtTime(r.time_taken)}</div>
+      </div>`).join('') + `</div>`;
+}
+
+/* ═══════ الدعم ═══════ */
 async function sendSupport(){
   const t = document.getElementById('supportText').value.trim();
   if(!t) return document.getElementById('supportMsg').innerHTML='<div class="error">اكتب رسالتك الأول</div>';
   await fetch('/api/support',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
   document.getElementById('supportText').value='';
-  document.getElementById('supportMsg').innerHTML='<div class="success">✅ وصلت رسالتك للإدارة، هتلاقي الرد في "ردود الدعم"</div>';
+  document.getElementById('supportMsg').innerHTML='<div class="success">✅ وصلت رسالتك للإدارة</div>';
   loadReplies();
 }
 
