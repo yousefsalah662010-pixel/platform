@@ -4,10 +4,16 @@
     { "src": "server.js", "use": "@vercel/node" },
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "admin.html", "use": "@vercel/static" },
-    { "src": "photo.jpg", "use": "@vercel/static" }
+    { "src": "photo.jpg", "use": "@vercel/static" },
+    { "src": "manifest.json", "use": "@vercel/static" },
+    { "src": "icon.svg", "use": "@vercel/static" },
+    { "src": "sw.js", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "server.js" },
+    { "src": "/sw.js", "dest": "/sw.js" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/icon.svg", "dest": "/icon.svg" },
     { "src": "/admin.html", "dest": "/admin.html" },
     { "src": "/photo.jpg", "dest": "/photo.jpg" },
     { "src": "/(.*)", "dest": "/index.html" }
