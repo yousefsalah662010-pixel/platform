@@ -472,13 +472,14 @@ async function addCode(){
 async function loadUsers(){
   const us = await fetch('/api/admin/users').then(r=>r.json());
   document.getElementById('usersList').innerHTML = `<table>
-    <tr><th>الاسم</th><th>الهاتف</th><th>ولي الأمر</th><th>الإيميل</th><th>السنة</th><th>الحالة</th><th>تعطيل/تفعيل</th></tr>
+    <tr><th>الاسم</th><th>الهاتف</th><th>ولي الأمر</th><th>الإيميل</th><th>السنة</th><th>المحاولات</th><th>الحالة</th><th>تعطيل/تفعيل</th></tr>
     ${us.map(u=>`<tr>
-      <td>${esc(u.first_name+' '+u.last_name)}</td>
+      <td>${esc(u.first_name+' '+u.last_name)}${u.parent_call?'<br><span class="badgeUsed">📞 مكالمة ولي أمر مطلوبة</span>':''}</td>
       <td>${esc(u.phone)}</td>
       <td>${esc(u.parent_phone)}</td>
       <td>${esc(u.email)}</td>
       <td>${esc(u.grade)}</td>
+      <td>${u.attempts_left ?? 3}</td>
       <td>${u.disabled?'<span class="badgeOff">🚫 معطل</span>':'<span class="badgeOn">✅ شغال</span>'}</td>
       <td>${u.disabled
         ? `<button class="btnGreen btnSm" onclick="toggleUser(${u.id})">✅ تفعيل</button>`
