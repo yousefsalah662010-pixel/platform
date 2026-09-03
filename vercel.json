@@ -1,15 +1,15 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
+    { "src": "server.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "admin.html", "use": "@vercel/static" },
+    { "src": "photo.jpg", "use": "@vercel/static" }
   ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
-    }
+    { "src": "/api/(.*)", "dest": "server.js" },
+    { "src": "/admin.html", "dest": "/admin.html" },
+    { "src": "/photo.jpg", "dest": "/photo.jpg" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
