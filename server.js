@@ -17,60 +17,65 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
-
 async function initDB(){
-  await pool.query(`CREATE TABLE IF NOT EXISTS users(
-    id SERIAL PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
-    phone TEXT NOT NULL, parent_phone TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL, grade TEXT NOT NULL, gender TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW())`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS courses(
-    id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
-    price INTEGER NOT NULL, emoji TEXT DEFAULT '📚',
-    color TEXT DEFAULT 'linear-gradient(135deg,#1e3a8a,#3b82f6)')`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS lessons(
-    id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
-    title TEXT NOT NULL, video_url TEXT, description TEXT)`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS enrollments(
-    id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, course_id INTEGER NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, course_id))`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS codes(
-    id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL, course_id INTEGER NOT NULL,
-    used INTEGER DEFAULT 0, used_by INTEGER, item_type TEXT DEFAULT 'course')`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS messages(
-    id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
-    reply TEXT, created_at TIMESTAMP DEFAULT NOW(), replied_at TEXT)`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled INTEGER DEFAULT 0`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS books(
-    id SERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT,
-    price INTEGER NOT NULL, emoji TEXT DEFAULT '📖', pdf_url TEXT)`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS exams(
-    id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
-    title TEXT NOT NULL, duration_minutes INTEGER DEFAULT 30,
-    status TEXT DEFAULT 'closed', created_at TIMESTAMP DEFAULT NOW())`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS questions(
-    id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL,
-    type TEXT NOT NULL, text TEXT NOT NULL,
-    options TEXT, order_items TEXT, correct TEXT, points INTEGER DEFAULT 1)`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS submissions(
-    id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
-    answers TEXT, score REAL DEFAULT 0, essay_score REAL DEFAULT 0,
-    essay_pending INTEGER DEFAULT 0, time_taken INTEGER DEFAULT 0,
-    submitted_at TIMESTAMP DEFAULT NOW(), UNIQUE(exam_id, user_id))`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attempts_left INTEGER DEFAULT 3`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_call INTEGER DEFAULT 0`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS notifications(
-    id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
-    read INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS lesson_views(
-    user_id INTEGER NOT NULL, lesson_id INTEGER NOT NULL,
-    viewed_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(user_id, lesson_id))`);
-  // ── جلسات في قاعدة البيانات (تشتغل على Vercel و Railway وأي حاجة) ──
-  await pool.query(`CREATE TABLE IF NOT EXISTS sessions(
-    token TEXT PRIMARY KEY, user_id INTEGER, admin INTEGER DEFAULT 0,
-    expires TIMESTAMPTZ NOT NULL)`);
+  const ddl = [
+    `CREATE TABLE IF NOT EXISTS users(
+      id SERIAL PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
+      phone TEXT NOT NULL, parent_phone TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL, grade TEXT NOT NULL, gender TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS courses(
+      id SERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
+      price INTEGER NOT NULL, emoji TEXT DEFAULT '📚',
+      color TEXT DEFAULT 'linear-gradient(135deg,#1e3a8a,#3b82f6)')`,
+    `CREATE TABLE IF NOT EXISTS lessons(
+      id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
+      title TEXT NOT NULL, video_url TEXT, description TEXT)`,
+    `CREATE TABLE IF NOT EXISTS enrollments(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, course_id INTEGER NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, course_id))`,
+    `CREATE TABLE IF NOT EXISTS codes(
+      id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL, course_id INTEGER NOT NULL,
+      used INTEGER DEFAULT 0, used_by INTEGER, item_type TEXT DEFAULT 'course')`,
+    `CREATE TABLE IF NOT EXISTS messages(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
+      reply TEXT, created_at TIMESTAMP DEFAULT NOW(), replied_at TEXT)`,
+    `CREATE TABLE IF NOT EXISTS books(
+      id SERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT,
+      price INTEGER NOT NULL, emoji TEXT DEFAULT '📖', pdf_url TEXT)`,
+    `CREATE TABLE IF NOT EXISTS exams(
+      id SERIAL PRIMARY KEY, course_id INTEGER NOT NULL,
+      title TEXT NOT NULL, duration_minutes INTEGER DEFAULT 30,
+      status TEXT DEFAULT 'closed', created_at TIMESTAMP DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS questions(
+      id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL,
+      type TEXT NOT NULL, text TEXT NOT NULL,
+      options TEXT, order_items TEXT, correct TEXT, points INTEGER DEFAULT 1)`,
+    `CREATE TABLE IF NOT EXISTS submissions(
+      id SERIAL PRIMARY KEY, exam_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+      answers TEXT, score REAL DEFAULT 0, essay_score REAL DEFAULT 0,
+      essay_pending INTEGER DEFAULT 0, time_taken INTEGER DEFAULT 0,
+      submitted_at TIMESTAMP DEFAULT NOW(), UNIQUE(exam_id, user_id))`,
+    `CREATE TABLE IF NOT EXISTS notifications(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL, text TEXT NOT NULL,
+      read INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS lesson_views(
+      user_id INTEGER NOT NULL, lesson_id INTEGER NOT NULL,
+      viewed_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(user_id, lesson_id))`,
+    `CREATE TABLE IF NOT EXISTS sessions(
+      token TEXT PRIMARY KEY, user_id INTEGER, admin INTEGER DEFAULT 0,
+      expires TIMESTAMPTZ NOT NULL)`
+  ];
+  // ── تشغيل إنشاء الجداول كلها بالتوازي (أسرع بكتير) ──
+  await Promise.all(ddl.map(q => pool.query(q)));
+  // ── الأعمدة الإضافية (لو موجودة تتخطى) ──
+  await Promise.all([
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled INTEGER DEFAULT 0`),
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attempts_left INTEGER DEFAULT 3`),
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_call INTEGER DEFAULT 0`),
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT`)
+  ]);
 }
 
 async function notify(userId, text){
