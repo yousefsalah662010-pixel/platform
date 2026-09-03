@@ -212,7 +212,7 @@
       <button class="btnMain" type="submit">دخول</button>
     </form>
 
-    <form id="signupForm" class="hidden" onsubmit="doSignup(event)">
+   <form id="signupForm" class="hidden" onsubmit="event.preventDefault(); doSignup(event); return false;">
       <div id="signupMsg"></div>
       <div class="row2">
         <div class="field"><label>الاسم الأول *</label><input type="text" id="suFirst" required></div>
