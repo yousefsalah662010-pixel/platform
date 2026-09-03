@@ -13,27 +13,43 @@
     box-shadow:0 10px 40px rgba(0,0,0,.1); }
   #loginBox h1 { text-align:center; color:#1e3a8a; margin-bottom:20px; }
   input, select, textarea { width:100%; padding:11px; border:2px solid #e2e8f0; border-radius:10px;
-    font-family:'Cairo'; margin-bottom:12px; }
+    font-family:'Cairo'; margin-bottom:12px; font-size:14px; }
   button { background:#1e3a8a; color:#fff; border:none; padding:12px 25px; border-radius:10px;
-    font-family:'Cairo'; font-weight:700; cursor:pointer; }
+    font-family:'Cairo'; font-weight:700; cursor:pointer; font-size:14px; }
+  button:hover { opacity:.9; }
   header { background:#1e3a8a; color:#fff; padding:15px 25px; display:flex; justify-content:space-between;
     align-items:center; flex-wrap:wrap; gap:10px; }
   header button { background:rgba(255,255,255,.2); }
   .tabs { display:flex; gap:8px; padding:15px 25px; flex-wrap:wrap; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.05); }
   .tabs button { background:#e2e8f0; color:#334155; }
   .tabs button.active { background:#1e3a8a; color:#fff; }
-  .content { max-width:900px; margin:auto; padding:25px; }
+  .content { max-width:950px; margin:auto; padding:25px; }
   .card { background:#fff; border-radius:14px; padding:20px; margin-bottom:15px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
   .card .info { font-size:13px; color:#64748b; margin-bottom:8px; }
   .card .txt { background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-size:14px; }
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
   table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden;
     box-shadow:0 4px 12px rgba(0,0,0,.06); }
   th, td { padding:11px; text-align:right; font-size:13px; border-bottom:1px solid #f1f5f9; }
   th { background:#1e3a8a; color:#fff; }
   .badgeUsed { background:#fee2e2; color:#b91c1c; padding:3px 10px; border-radius:20px; font-size:12px; }
   .badgeFree { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:20px; font-size:12px; }
-  h2 { color:#1e3a8a; margin-bottom:15px; }
+  .badgeOff { background:#fee2e2; color:#b91c1c; padding:3px 10px; border-radius:20px; font-size:12px; }
+  .badgeOn { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:20px; font-size:12px; }
+  .btnSm { padding:7px 14px; font-size:12px; border-radius:8px; }
+  .btnGreen { background:#059669 !important; }
+  .btnRed { background:#dc2626 !important; }
+  .btnGray { background:#64748b !important; }
+  .btnOrange { background:#d97706 !important; }
+  h2 { color:#1e3a8a; margin-bottom:15px; font-size:20px; }
+  .statusBox { padding:10px 15px; border-radius:10px; font-weight:700; font-size:14px; margin-bottom:12px; }
+  .stOpen { background:#dcfce7; color:#166534; }
+  .stClosed { background:#f1f5f9; color:#475569; }
+  .stResults { background:#fef3c7; color:#92400e; }
+  .essayBox { background:#fffbeb; border:2px dashed #f59e0b; border-radius:10px; padding:12px; margin-top:8px; }
+  .essayBox .ans { background:#fff; padding:10px; border-radius:8px; font-size:13px; margin-bottom:8px; }
+  @media(max-width:700px){ .row2,.row3 { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -52,58 +68,89 @@
     <button onclick="adminLogout()">خروج</button>
   </header>
   <div class="tabs">
-    <button class="active" id="bt-msgs" onclick="showTab('msgs')">📨 رسائل الدعم</button>
-    <button id="bt-codes" onclick="showTab('codes')">🔑 رموز الدخول</button>
-    <button id="bt-lessons" onclick="showTab('lessons')">🎬 الدروس</button>
-    <button id="bt-addcourse" onclick="showTab('addcourse')">➕ إضافة كورس</button>
+    <button class="active" id="bt-msgs" onclick="showTab('msgs')">📨 الرسائل</button>
+    <button id="bt-courses" onclick="showTab('courses')">🎓 الكورسات والدروس</button>
+    <button id="bt-books" onclick="showTab('books')">📖 الكتب</button>
+    <button id="bt-exams" onclick="showTab('exams')">📝 الامتحانات</button>
+    <button id="bt-codes" onclick="showTab('codes')">🔑 الرموز</button>
     <button id="bt-users" onclick="showTab('users')">👥 الطلاب</button>
   </div>
   <div class="content">
     <div id="tab-msgs"><h2>رسائل الطلاب</h2><div id="msgsList"></div></div>
 
-    <div id="tab-codes" class="hidden">
-      <h2>رموز الدخول</h2>
+    <div id="tab-courses" class="hidden">
+      <h2>الكورسات والدروس</h2>
       <div class="card">
         <div class="row2">
-          <select id="codeCourse"></select>
-          <input id="newCode" placeholder="اكتب الرمز أو دوس توليد">
+          <input id="ncName" placeholder="اسم الكورس الجديد">
+          <input id="ncPrice" type="number" placeholder="السعر">
         </div>
-        <button onclick="addCode()">➕ إضافة الرمز</button>
-        <button style="background:#059669;margin-right:8px;" onclick="genCode()">🎲 توليد رمز عشوائي</button>
-        <button style="background:#64748b;margin-right:8px;" onclick="loadCodes()">🔄 تحديث</button>
+        <div class="row2">
+          <input id="ncEmoji" placeholder="إيموجي (مثال: 📘)">
+          <input id="ncDesc" placeholder="وصف الكورس">
+        </div>
+        <button onclick="addCourse()">➕ إضافة كورس</button>
+      </div>
+      <div id="coursesList"></div>
+    </div>
+
+    <div id="tab-books" class="hidden">
+      <h2>الكتب 📖</h2>
+      <div class="card">
+        <input id="nbTitle" placeholder="اسم الكتاب">
+        <div class="row2">
+          <input id="nbPrice" type="number" placeholder="السعر">
+          <input id="nbEmoji" placeholder="إيموجي (مثال: 📗)">
+        </div>
+        <input id="nbPdf" placeholder="رابط ملف PDF (مثال: رابط Google Drive مباشر)">
+        <textarea id="nbDesc" placeholder="وصف الكتاب"></textarea>
+        <button onclick="addBook()">➕ إضافة كتاب</button>
+      </div>
+      <div id="booksList"></div>
+    </div>
+
+    <div id="tab-exams" class="hidden">
+      <h2>الامتحانات 📝</h2>
+      <div class="card">
+        <select id="examCourseSel"></select>
+        <div id="examStatusBox"></div>
+        <div id="examManage"></div>
+      </div>
+      <div id="examQuestionsArea"></div>
+    </div>
+
+    <div id="tab-codes" class="hidden">
+      <h2>رموز الدخول 🔑</h2>
+      <div class="card">
+        <div class="row2">
+          <select id="codeType" onchange="fillCodeItems()">
+            <option value="course">رمز لكورس</option>
+            <option value="book">رمز لكتاب</option>
+          </select>
+          <select id="codeItem"></select>
+        </div>
+        <div class="row2">
+          <input id="newCode" placeholder="اكتب الرمز أو ولّد واحد">
+          <div style="display:flex;gap:8px;">
+            <button class="btnGreen" style="flex:1;" onclick="addCode()">➕ إضافة</button>
+            <button class="btnGray" style="flex:1;" onclick="genCode()">🎲 توليد</button>
+          </div>
+        </div>
+        <button class="btnGray" onclick="loadCodes()">🔄 تحديث القايمة</button>
       </div>
       <div id="codesList"></div>
     </div>
 
-    <div id="tab-lessons" class="hidden">
-      <h2>إضافة درس (فيديو)</h2>
-      <div class="card">
-        <select id="lessonCourse"></select>
-        <input id="lessonTitle" placeholder="عنوان الدرس">
-        <input id="lessonVideo" placeholder="رابط الفيديو (YouTube أو mp4) - اختياري">
-        <textarea id="lessonDesc" placeholder="وصف الدرس - اختياري"></textarea>
-        <button onclick="addLesson()">➕ إضافة الدرس</button>
-      </div>
-      <div id="lessonsList"></div>
+    <div id="tab-users" class="hidden">
+      <h2>الطلاب 👥</h2>
+      <div id="usersList"></div>
     </div>
-
-    <div id="tab-addcourse" class="hidden">
-      <h2>إضافة كورس جديد</h2>
-      <div class="card">
-        <input id="ncName" placeholder="اسم الكورس">
-        <input id="ncPrice" type="number" placeholder="السعر بالجنيه">
-        <input id="ncEmoji" placeholder="إيموجي للكورس (مثال: 📘)">
-        <textarea id="ncDesc" placeholder="وصف الكورس"></textarea>
-        <button onclick="addCourse()">➕ إضافة</button>
-      </div>
-    </div>
-
-    <div id="tab-users" class="hidden"><h2>الطلاب المسجلين</h2><div id="usersList"></div></div>
   </div>
 </div>
 
 <script>
 const esc = s => String(s??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let COURSES = [], BOOKS = [], currentExam = null;
 
 async function adminLogin(){
   const r = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -114,38 +161,34 @@ async function adminLogin(){
 async function adminLogout(){ await fetch('/api/admin/logout',{method:'POST'}); location.reload(); }
 
 function showTab(t){
-  ['msgs','codes','lessons','addcourse','users'].forEach(x=>{
+  ['msgs','courses','books','exams','codes','users'].forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
     document.getElementById('bt-'+x).classList.toggle('active', x===t);
   });
   if(t==='msgs') loadMsgs();
-  if(t==='codes') loadCodes();
-  if(t==='lessons') loadLessonsAdmin();
+  if(t==='courses') loadCoursesTab();
+  if(t==='books') loadBooksTab();
+  if(t==='exams') loadExamsTab();
+  if(t==='codes') loadCodesTab();
   if(t==='users') loadUsers();
 }
 
 function showAdmin(){
   document.getElementById('loginBox').classList.add('hidden');
   document.getElementById('adminApp').classList.remove('hidden');
-  loadCoursesSelects(); showTab('msgs');
+  showTab('msgs');
 }
 
-async function loadCoursesSelects(){
-  const cs = await fetch('/api/admin/courses').then(r=>r.json());
-  const opts = cs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  document.getElementById('codeCourse').innerHTML = opts;
-  document.getElementById('lessonCourse').innerHTML = opts;
-}
-
+/* ═══ الرسائل ═══ */
 async function loadMsgs(){
   const msgs = await fetch('/api/admin/messages').then(r=>r.json());
   document.getElementById('msgsList').innerHTML = msgs.length ? msgs.map(m=>`
     <div class="card">
       <div class="info">👤 ${esc(m.first_name+' '+m.last_name)} | 📞 ${esc(m.phone)} | 🕐 ${esc(m.created_at)}</div>
       <div class="txt">${esc(m.text)}</div>
-      <textarea id="rep-${m.id}" placeholder="اكتب ردك هنا...">${esc(m.reply||'')}</textarea>
+      <textarea id="rep-${m.id}" placeholder="اكتب ردك...">${esc(m.reply||'')}</textarea>
       <button onclick="sendReply(${m.id})">📤 ${m.reply?'تعديل الرد':'إرسال الرد'}</button>
-      ${m.reply?`<span style="color:#166534;font-size:13px;font-weight:700;margin-right:10px;">✅ تم الرد: ${esc(m.replied_at)}</span>`:''}
+      ${m.reply?`<span style="color:#166534;font-size:13px;font-weight:700;margin-right:10px;">✅ تم الرد</span>`:''}
     </div>`).join('') : '<div class="card">مفيش رسائل</div>';
 }
 async function sendReply(id){
@@ -154,62 +197,303 @@ async function sendReply(id){
   loadMsgs();
 }
 
-async function addCode(){
-  const r = await fetch('/api/admin/codes',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({course_id:codeCourse.value, code:newCode.value})});
-  const d = await r.json();
-  alert(d.ok?'✅ الرمز اتضاف':'❌ '+d.msg);
-  newCode.value=''; loadCodes();
+/* ═══ الكورسات والدروس ═══ */
+async function loadCoursesTab(){
+  COURSES = await fetch('/api/admin/courses').then(r=>r.json());
+  document.getElementById('coursesList').innerHTML = COURSES.map(c=>`
+    <div class="card">
+      <b>${esc(c.name)}</b> — ${c.price} جنيه
+      <div style="margin-top:12px;">
+        <input id="lessonTitle-${c.id}" placeholder="عنوان الدرس الجديد" style="margin-bottom:8px;">
+        <input id="lessonVideo-${c.id}" placeholder="رابط فيديو YouTube أو mp4" style="margin-bottom:8px;">
+        <input id="lessonDesc-${c.id}" placeholder="وصف الدرس (اختياري)">
+        <button class="btnGreen btnSm" onclick="addLesson(${c.id})">➕ إضافة درس</button>
+      </div>
+      <div id="lessons-${c.id}" style="margin-top:12px;"></div>
+    </div>`).join('') || '<div class="card">مفيش كورسات</div>';
+  for(const c of COURSES) loadLessonsList(c.id);
 }
-function genCode(){ newCode.value = 'KG' + Math.random().toString(36).slice(2,8).toUpperCase(); }
+async function loadLessonsList(cid){
+  const ls = await fetch('/api/admin/lessons?course_id='+cid).then(r=>r.json());
+  const el = document.getElementById('lessons-'+cid);
+  if(el) el.innerHTML = ls.length ? `<table><tr><th>#</th><th>الدرس</th><th>الفيديو</th></tr>
+    ${ls.map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.title)}</td><td style="font-size:11px;">${esc(l.video_url||'—')}</td></tr>`).join('')}</table>`
+    : '<small style="color:#94a3b8;">مفيش دروس لسه</small>';
+}
+async function addCourse(){
+  const r = await fetch('/api/admin/courses',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:ncName.value,description:ncDesc.value,price:ncPrice.value,emoji:ncEmoji.value})});
+  const d = await r.json();
+  if(d.ok){ alert('✅ اتضاف'); ncName.value=ncDesc.value=ncPrice.value=ncEmoji.value=''; loadCoursesTab(); }
+}
+async function addLesson(cid){
+  const r = await fetch('/api/admin/lessons',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({course_id:cid, title:document.getElementById('lessonTitle-'+cid).value,
+      video_url:document.getElementById('lessonVideo-'+cid).value,
+      description:document.getElementById('lessonDesc-'+cid).value})});
+  const d = await r.json();
+  if(d.ok) loadLessonsList(cid); else alert(d.msg);
+}
 
+/* ═══ الكتب ═══ */
+async function loadBooksTab(){
+  BOOKS = await fetch('/api/admin/books').then(r=>r.json());
+  document.getElementById('booksList').innerHTML = BOOKS.length ? `<table>
+    <tr><th>الكتاب</th><th>السعر</th><th>PDF</th><th></th></tr>
+    ${BOOKS.map(b=>`<tr><td>${b.emoji} ${esc(b.title)}</td><td>${b.price} ج</td>
+      <td style="font-size:11px;">${b.pdf_url?'✅ موجود':'❌'}</td>
+      <td><button class="btnRed btnSm" onclick="delBook(${b.id})">🗑️ حذف</button></td></tr>`).join('')}</table>`
+    : '<div class="card">مفيش كتب — ضيف أول كتاب من فوق</div>';
+}
+async function addBook(){
+  const r = await fetch('/api/admin/books',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title:nbTitle.value,description:nbDesc.value,price:nbPrice.value,emoji:nbEmoji.value,pdf_url:nbPdf.value})});
+  const d = await r.json();
+  if(d.ok){ alert('✅ الكتاب اتضاف'); nbTitle.value=nbDesc.value=nbPrice.value=nbEmoji.value=nbPdf.value=''; loadBooksTab(); }
+  else alert(d.msg);
+}
+async function delBook(id){
+  if(!confirm('متأكد من حذف الكتاب؟')) return;
+  await fetch('/api/admin/books/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  loadBooksTab();
+}
+
+/* ═══ الامتحانات ═══ */
+async function loadExamsTab(){
+  COURSES = await fetch('/api/admin/courses').then(r=>r.json());
+  document.getElementById('examCourseSel').innerHTML = COURSES.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  document.getElementById('examCourseSel').onchange = renderExamPanel;
+  renderExamPanel();
+}
+async function renderExamPanel(){
+  const cid = document.getElementById('examCourseSel').value;
+  if(!cid) return;
+  const d = await fetch('/api/admin/exam?course_id='+cid).then(r=>r.json());
+  currentExam = d.exam;
+  const stBox = document.getElementById('examStatusBox');
+  const manage = document.getElementById('examManage');
+  const qArea = document.getElementById('examQuestionsArea');
+
+  if(!d.exam){
+    stBox.innerHTML = '<div class="statusBox stClosed">مفيش امتحان للكورس ده</div>';
+    manage.innerHTML = `
+      <input id="exTitle" placeholder="عنوان الامتحان">
+      <input id="exDur" type="number" placeholder="المدة بالدقائق (مثال: 30)" value="30">
+      <button class="btnGreen" onclick="createExam(${cid})">➕ إنشاء الامتحان</button>`;
+    qArea.innerHTML = '';
+    return;
+  }
+  const st = d.exam.status;
+  const stName = {open:'🟢 مفتوح — الطلاب بيدخلوا الآن', closed:'🔒 مقفول — مفيش حد يدخل', results:'🏆 النتائج معلنة — لوحة الشرف ظاهرة'};
+  stBox.innerHTML = `<div class="statusBox ${st==='open'?'stOpen':st==='results'?'stResults':'stClosed'}">
+    ${stName[st]||st}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${st!=='open'?`<button class="btnGreen" onclick="setExamStatus('open')">▶️ افتح الامتحان للطلاب</button>`:''}
+      ${st!=='closed'?`<button class="btnGray" onclick="setExamStatus('closed')">⏸️ اقفل الامتحان</button>`:''}
+      ${st!=='results'?`<button class="btnOrange" onclick="setExamStatus('results')">🏆 أعلن النتائج (لوحة الشرف)</button>`:''}
+      <button class="btnRed" onclick="deleteExam()">🗑️ امسح الامتحان بالكامل (لدورة جديدة)</button>
+    </div>`;
+
+  manage.innerHTML = `
+    <h3 style="margin:15px 0 8px;">➕ إضافة سؤال (${d.exam.title})</h3>
+    <select id="qType" onchange="renderQForm()">
+      <option value="mcq">اختيار من متعدد</option>
+      <option value="truefalse">صح وغلط</option>
+      <option value="order">رتب حسب</option>
+      <option value="essay">مقالي</option>
+    </select>
+    <div id="qForm"></div>`;
+  renderQForm();
+
+  /* الأسئلة الحالية */
+  let qHtml = `<h3 style="margin:15px 0 8px;">📋 أسئلة الامتحان (${d.questions.length})</h3>`;
+  qHtml += d.questions.length ? d.questions.map((q,i)=>{
+    let det = '';
+    if(q.type==='mcq') det = 'الاختيارات: '+ (q.options||[]).join(' | ') + ' — <b>الصح: '+esc(q.correct)+'</b>';
+    if(q.type==='truefalse') det = 'الصح: <b>'+esc(q.correct)+'</b>';
+    if(q.type==='order') det = 'الترتيب الصح: '+(q.order_items||[]).join(' ← ');
+    if(q.type==='essay') det = 'يتصحح يدويًا بعد التسليم';
+    return `<div class="card" style="padding:12px;">
+      <b>${i+1}.</b> ${esc(q.text)} <small style="color:#64748b;">(${q.points} درجة — ${q.type})</small>
+      <div style="font-size:12px;color:#475569;margin-top:4px;">${det}</div>
+      <button class="btnRed btnSm" style="margin-top:6px;" onclick="delQuestion(${q.id})">🗑️ حذف السؤال</button>
+    </div>`;
+  }).join('') : '<div class="card">لسه مفيش أسئلة — ضيف من فوق</div>';
+
+  /* النتائج والمقالي */
+  qHtml += `<h3 style="margin:20px 0 8px;">📊 التسليمات (${d.submissions.length})</h3>`;
+  qHtml += d.submissions.length ? d.submissions.map((s,i)=>{
+    let essays = '';
+    try {
+      const ans = JSON.parse(s.answers||'[]');
+      const qMap = {}; d.questions.forEach(q=>qMap[q.id]=q);
+      for(const a of ans){
+        const q = qMap[a.qid];
+        if(q && q.type==='essay'){
+          const graded = (s.essay_grades && s.essay_grades[a.qid] !== undefined) ? s.essay_grades[a.qid] : null;
+          essays += `<div class="essayBox">
+            <b>📝 سؤال مقالي:</b> ${esc(q.text)}
+            <div class="ans">إجابة الطالب: ${esc(a.value||'(فاضي)')}</div>
+            <input id="eg-${s.id}-${a.qid}" type="number" placeholder="درجة السؤال (من ${q.points})" value="${graded!==null?graded:''}" style="width:220px;margin-bottom:6px;">
+          </div>`;
+        }
+      }
+    } catch(e){}
+    return `<div class="card">
+      <div class="info">👤 ${esc(s.first_name+' '+s.last_name)} | ⏱ ${Math.floor(s.time_taken/60)} دقيقة ${s.time_taken%60} ثانية</div>
+      <div>الدرجة الحالية: <b>${(s.score+s.essay_score).toFixed(1)}</b> ${s.essay_pending?'<span class="badgeUsed">⏳ فيه مقالي يستنى تصحيح</span>':''}</div>
+      ${essays}
+      ${essays?`<button class="btnGreen btnSm" onclick="gradeEssay(${s.id})">✅ احفظ درجات المقالي</button>`:''}
+    </div>`;
+  }).join('') : '<div class="card">لسه محدش سلم</div>';
+
+  qArea.innerHTML = qHtml;
+}
+
+function renderQForm(){
+  const t = document.getElementById('qType').value;
+  const f = document.getElementById('qForm');
+  if(t==='mcq'){
+    f.innerHTML = `
+      <textarea id="qText" placeholder="نص السؤال"></textarea>
+      <input id="qOpt0" placeholder="الاختيار A">
+      <input id="qOpt1" placeholder="الاختيار B">
+      <input id="qOpt2" placeholder="الاختيار C">
+      <input id="qOpt3" placeholder="الاختيار D">
+      <select id="qCorrect"><option value="A">الصح: A</option><option value="B">الصح: B</option><option value="C">الصح: C</option><option value="D">الصح: D</option></select>
+      <input id="qPts" type="number" value="1" placeholder="الدرجة">
+      <button class="btnGreen" onclick="addQuestion()">➕ أضف السؤال</button>`;
+  } else if(t==='truefalse'){
+    f.innerHTML = `
+      <textarea id="qText" placeholder="نص السؤال"></textarea>
+      <select id="qCorrect"><option value="صح">الصح: صح</option><option value="غلط">الصح: غلط</option></select>
+      <input id="qPts" type="number" value="1" placeholder="الدرجة">
+      <button class="btnGreen" onclick="addQuestion()">➕ أضف السؤال</button>`;
+  } else if(t==='order'){
+    f.innerHTML = `
+      <textarea id="qText" placeholder="نص السؤال (مثال: رتب الخطوات من الأولى للأخيرة)"></textarea>
+      <input id="qOrd0" placeholder="الترتيب 1 (الصح أولاً)">
+      <input id="qOrd1" placeholder="الترتيب 2">
+      <input id="qOrd2" placeholder="الترتيب 3">
+      <input id="qOrd3" placeholder="الترتيب 4 (اختياري)">
+      <input id="qPts" type="number" value="1" placeholder="الدرجة">
+      <button class="btnGreen" onclick="addQuestion()">➕ أضف السؤال</button>`;
+  } else {
+    f.innerHTML = `
+      <textarea id="qText" placeholder="نص السؤال المقالي"></textarea>
+      <input id="qPts" type="number" value="1" placeholder="الدرجة القصوى">
+      <button class="btnGreen" onclick="addQuestion()">➕ أضف السؤال</button>`;
+  }
+}
+async function addQuestion(){
+  const t = document.getElementById('qType').value;
+  const body = {exam_id: currentExam.id, type:t, text:document.getElementById('qText').value,
+    points:document.getElementById('qPts').value};
+  if(!body.text) return alert('اكتب نص السؤال');
+  if(t==='mcq'){
+    body.options = [qOpt0.value,qOpt1.value,qOpt2.value,qOpt3.value].filter(x=>x!=='');
+    body.correct = document.getElementById('qCorrect').value;
+  } else if(t==='truefalse'){
+    body.correct = document.getElementById('qCorrect').value;
+  } else if(t==='order'){
+    body.order_items = [qOrd0.value,qOrd1.value,qOrd2.value,qOrd3.value].filter(x=>x!=='');
+  }
+  const r = await fetch('/api/admin/exam/question',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d = await r.json();
+  if(d.ok) renderExamPanel(); else alert(d.msg);
+}
+async function delQuestion(id){
+  await fetch('/api/admin/exam/question/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  renderExamPanel();
+}
+async function createExam(cid){
+  const r = await fetch('/api/admin/exam',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({course_id:cid, title:document.getElementById('exTitle').value,
+      duration_minutes:document.getElementById('exDur').value})});
+  const d = await r.json();
+  if(d.ok) renderExamPanel(); else alert(d.msg);
+}
+async function setExamStatus(st){
+  await fetch('/api/admin/exam/status',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({exam_id:currentExam.id, status:st})});
+  renderExamPanel();
+}
+async function deleteExam(){
+  if(!confirm('هتمسح الامتحان وكل الأسئلة والنتائج — متأكد؟')) return;
+  await fetch('/api/admin/exam/delete',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({exam_id:currentExam.id})});
+  renderExamPanel();
+}
+async function gradeEssay(sid){
+  const grades = {};
+  document.querySelectorAll('[id^="eg-'+sid+'-"]').forEach(inp=>{
+    const qid = inp.id.split('-')[2];
+    if(inp.value!=='') grades[qid] = inp.value;
+  });
+  await fetch('/api/admin/exam/grade',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({submission_id:sid, grades})});
+  renderExamPanel();
+}
+
+/* ═══ الرموز ═══ */
+function fillCodeItems(){
+  const t = document.getElementById('codeType').value;
+  const items = t==='course' ? COURSES : BOOKS;
+  document.getElementById('codeItem').innerHTML = items.map(x=>`<option value="${x.id}">${esc(x.name||x.title)}</option>`).join('');
+}
+async function loadCodesTab(){
+  if(!COURSES.length) COURSES = await fetch('/api/admin/courses').then(r=>r.json());
+  if(!BOOKS.length) BOOKS = await fetch('/api/admin/books').then(r=>r.json());
+  fillCodeItems();
+  loadCodes();
+}
 async function loadCodes(){
-  await loadCoursesSelects();
-  const courseId = codeCourse.value;
-  const codes = await fetch('/api/admin/codes?course_id='+courseId).then(r=>r.json());
+  const t = document.getElementById('codeType').value;
+  const item = document.getElementById('codeItem').value;
+  const codes = await fetch(`/api/admin/codes?item_type=${t}&item_id=${item}`).then(r=>r.json());
   document.getElementById('codesList').innerHTML = `<table>
     <tr><th>الرمز</th><th>الحالة</th><th>استخدمه</th></tr>
     ${codes.map(c=>`<tr><td style="font-weight:900;letter-spacing:1px;">${esc(c.code)}</td>
       <td>${c.used?'<span class="badgeUsed">مستخدم</span>':'<span class="badgeFree">متاح</span>'}</td>
-      <td>${c.used_by_name?esc(c.used_by_name):'—'}</td></tr>`).join('')}</table>`;
+      <td>${c.used_by_name?esc(c.used_by_name):'—'}</td></tr>`).join('')}</table>` || '<div class="card">مفيش رموز</div>';
 }
-
-async function addLesson(){
-  const r = await fetch('/api/admin/lessons',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({course_id:lessonCourse.value, title:lessonTitle.value,
-      video_url:lessonVideo.value, description:lessonDesc.value})});
+function genCode(){ newCode.value = 'KG' + Math.random().toString(36).slice(2,8).toUpperCase(); }
+async function addCode(){
+  const t = document.getElementById('codeType').value;
+  const item = document.getElementById('codeItem').value;
+  const r = await fetch('/api/admin/codes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({code:newCode.value, item_type:t, item_id:item})});
   const d = await r.json();
-  alert(d.ok?'✅ الدرس اتضاف':'❌ '+d.msg);
-  lessonTitle.value=''; lessonVideo.value=''; lessonDesc.value='';
-  loadLessonsAdmin();
-}
-async function loadLessonsAdmin(){
-  const courseId = lessonCourse.value;
-  const ls = await fetch('/api/admin/lessons?course_id='+courseId).then(r=>r.json());
-  document.getElementById('lessonsList').innerHTML = `<table>
-    <tr><th>#</th><th>الدرس</th><th>الفيديو</th></tr>
-    ${ls.map(l=>`<tr><td>${l.id}</td><td>${esc(l.title)}</td><td style="font-size:11px;">${esc(l.video_url||'مفيش')}</td></tr>`).join('')}</table>`;
+  alert(d.ok?'✅ اتضاف':'❌ '+(d.msg||''));
+  newCode.value=''; loadCodes();
 }
 
-async function addCourse(){
-  const r = await fetch('/api/admin/courses',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name:ncName.value, description:ncDesc.value, price:ncPrice.value, emoji:ncEmoji.value})});
-  const d = await r.json();
-  if(d.ok){ alert('✅ الكورس اتضاف'); ncName.value=ncPrice.value=ncEmoji.value=ncDesc.value=''; loadCoursesSelects(); }
-}
-
+/* ═══ الطلاب ═══ */
 async function loadUsers(){
   const us = await fetch('/api/admin/users').then(r=>r.json());
   document.getElementById('usersList').innerHTML = `<table>
-    <tr><th>الاسم</th><th>الهاتف</th><th>ولي الأمر</th><th>الإيميل</th><th>السنة</th><th>النوع</th><th>التسجيل</th></tr>
-    ${us.map(u=>`<tr><td>${esc(u.first_name+' '+u.last_name)}</td><td>${esc(u.phone)}</td>
-      <td>${esc(u.parent_phone)}</td><td>${esc(u.email)}</td><td>${esc(u.grade)}</td>
-      <td>${esc(u.gender)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table>`;
+    <tr><th>الاسم</th><th>الهاتف</th><th>ولي الأمر</th><th>الإيميل</th><th>السنة</th><th>الحالة</th><th>تعطيل/تفعيل</th></tr>
+    ${us.map(u=>`<tr>
+      <td>${esc(u.first_name+' '+u.last_name)}</td>
+      <td>${esc(u.phone)}</td>
+      <td>${esc(u.parent_phone)}</td>
+      <td>${esc(u.email)}</td>
+      <td>${esc(u.grade)}</td>
+      <td>${u.disabled?'<span class="badgeOff">🚫 معطل</span>':'<span class="badgeOn">✅ شغال</span>'}</td>
+      <td>${u.disabled
+        ? `<button class="btnGreen btnSm" onclick="toggleUser(${u.id})">✅ تفعيل</button>`
+        : `<button class="btnRed btnSm" onclick="toggleUser(${u.id})">🚫 تعطيل</button>`}</td>
+    </tr>`).join('')}</table>`;
+}
+async function toggleUser(id){
+  const r = await fetch('/api/admin/toggle-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:id})});
+  const d = await r.json();
+  if(d.ok) loadUsers();
 }
 
 window.onload = async ()=>{
   const r = await fetch('/api/admin/messages');
-  if(r.ok) showAdmin();
+  if(r.ok){ COURSES = await fetch('/api/admin/courses').then(r=>r.json()); BOOKS = await fetch('/api/admin/books').then(r=>r.json()); showAdmin(); }
 };
 </script>
 </body>
