@@ -494,6 +494,49 @@ async function doChangePass(){
     setTimeout(closePassPanel, 1500);
   } else m.innerHTML='<div class="error">'+esc(d.msg)+'</div>';
 }
+let sugPicData = null;
+function openSuggest(){
+  document.getElementById('suggestPanel').classList.remove('hidden');
+  document.getElementById('sugMsg').innerHTML='';
+  document.getElementById('sugText').value='';
+  document.getElementById('sugPicName').textContent='';
+  document.getElementById('sugPicPreview').classList.add('hidden');
+  sugPicData = null;
+}
+function closeSuggest(){ document.getElementById('suggestPanel').classList.add('hidden'); }
+function sugPick(input){
+  const file = input.files[0];
+  if(!file) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      const max = 800;
+      const scale = Math.min(1, max/Math.max(img.width, img.height));
+      c.width = img.width*scale; c.height = img.height*scale;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      sugPicData = c.toDataURL('image/jpeg', .7);
+      const pv = document.getElementById('sugPicPreview');
+      pv.src = sugPicData; pv.classList.remove('hidden');
+      document.getElementById('sugPicName').textContent = '✅ ' + file.name;
+    };
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(file);
+}
+async function sendSuggest(){
+  const m = document.getElementById('sugMsg');
+  const text = document.getElementById('sugText').value.trim();
+  if(!text){ m.innerHTML='<div class="error">اكتب الاقتراح الأول</div>'; return; }
+  const r = await fetch('/api/suggestion',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text, pic:sugPicData})});
+  const d = await r.json();
+  if(d.ok){
+    m.innerHTML='<div class="success">✅ وصل اقتراحك للإدارة — شكرًا لمساهمتك في تطوير المنصة!</div>';
+    setTimeout(closeSuggest, 1800);
+  } else m.innerHTML='<div class="error">'+esc(d.msg)+'</div>';
+}
 window.onload = async ()=>{
   const r = await fetch('/api/me');
   if(r.ok){ me = await r.json(); await loadCourses(); showApp(); }
