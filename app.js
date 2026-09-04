@@ -537,6 +537,13 @@ async function sendSuggest(){
     setTimeout(closeSuggest, 1800);
   } else m.innerHTML='<div class="error">'+esc(d.msg)+'</div>';
 }
+async function loadStudentsCount(){
+  try {
+    const d = await fetch('/api/stats').then(r=>r.json());
+    const el = document.getElementById('studentsCount');
+    if(el && d.students) el.textContent = d.students;
+  } catch(e){}
+}
 window.onload = async ()=>{
   const r = await fetch('/api/me');
   if(r.ok){ me = await r.json(); await loadCourses(); showApp(); }
