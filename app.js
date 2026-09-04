@@ -541,11 +541,13 @@ async function sendSuggest(){
 async function loadStudentsCount(){
   try {
     const d = await fetch('/api/stats').then(r=>r.json());
-    const el = document.getElementById('studentsCount');
-    if(el && d.students) el.textContent = d.students;
+    const h = document.getElementById('studentsCount');
+    if(h && d.students) h.textContent = d.students;
+    const a = document.getElementById('authStudentsCount');
+    if(a && d.students) a.textContent = d.students;
   } catch(e){}
-}
-window.onload = async ()=>{
+}window.onload = async ()=>{
+  loadStudentsCount();
   const r = await fetch('/api/me');
   if(r.ok){ me = await r.json(); await loadCourses(); showApp(); }
 };
