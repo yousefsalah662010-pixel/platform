@@ -202,7 +202,7 @@ function showAdmin(){
   showTab('msgs');
    fetch('/api/stats').then(r=>r.json()).then(d=>{
     const el = document.getElementById('adminStuCount');
-    if(el) el.textContent = d.students;
+       if(el) el.textContent = d.realStudents;
   });
 }
 
