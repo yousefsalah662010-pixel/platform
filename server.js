@@ -321,7 +321,16 @@ app.post('/api/activate-book', requireLogin, async (req,res)=>{
   await pool.query('UPDATE codes SET used=1, used_by=$1 WHERE id=$2',[req.session.userId,c.id]);
   res.json({ok:true});
 });
-
+app.post('/api/suggestion', requireLogin, async (req,res)=>{
+  const text = (req.body.text||'').trim();
+  const pic = String(req.body.pic||'');
+  if(!text) return res.json({ok:false,msg:'اكتب الاقتراح الأول'});
+  if(pic && (!pic.startsWith('data:image/') || pic.length > 900000))
+    return res.json({ok:false,msg:'الصورة كبيرة أو غير صالحة'});
+  await pool.query('INSERT INTO suggestions(user_id,text,pic) VALUES($1,$2,$3)',
+    [req.session.userId, text, pic||null]);
+  res.json({ok:true});
+});
 app.post('/api/support', requireLogin, async (req,res)=>{
   const text = (req.body.text||'').trim();
   if(!text) return res.json({ok:false});
