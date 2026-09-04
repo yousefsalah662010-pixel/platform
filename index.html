@@ -262,6 +262,7 @@
         <a onclick="whatsappGeneral()">الدفع والاشتراكات</a>
         <a onclick="goTo('support')">الدعم</a>
         <a onclick="goTo('replies')">ردود الدعم</a>
+               <a onclick="openSuggest()">اقتراح تعديلات 💡</a>
         <a onclick="doLogout()">تسجيل الخروج</a>
       </nav>
     </div>
@@ -342,7 +343,22 @@
     <button style="background:none;color:#64748b;border:none;margin-top:8px;width:100%;font-family:Cairo;cursor:pointer;" onclick="closePassPanel()">إلغاء</button>
   </div>
 </div>
-
+<div id="suggestPanel" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;overflow-y:auto;">
+  <div style="max-width:480px;margin:60px auto;background:#fff;border-radius:16px;padding:30px;">
+    <h3 style="color:#1e3a8a;margin-bottom:5px;">💡 اقتراح تعديلات</h3>
+    <p style="font-size:13px;color:#64748b;margin-bottom:15px;">رأيك يهمنا — اقترح أي تعديل يحب يحصل في المنصة وهيوصل للإدارة مباشرة</p>
+    <div id="sugMsg"></div>
+    <div style="border:2px dashed #cbd5e1;border-radius:12px;padding:15px;text-align:center;margin-bottom:12px;">
+      <img id="sugPicPreview" class="hidden" style="max-width:100%;max-height:150px;border-radius:10px;margin-bottom:8px;display:block;margin:auto;">
+      <input type="file" accept="image/*" id="sugPicInput" class="hidden" onchange="sugPick(this)">
+      <button onclick="document.getElementById('sugPicInput').click()" style="background:#eff6ff;color:#1e3a8a;border:none;padding:9px 22px;border-radius:10px;font-family:Cairo;font-weight:700;cursor:pointer;font-size:13px;">📷 أرفق صورة (اختياري)</button>
+      <div id="sugPicName" style="font-size:12px;color:#94a3b8;margin-top:6px;"></div>
+    </div>
+    <textarea id="sugText" placeholder="اكتب اقتراحك هنا..." style="width:100%;min-height:110px;padding:13px;border:2px solid #e2e8f0;border-radius:12px;font-family:Cairo;font-size:14px;resize:vertical;margin-bottom:12px;"></textarea>
+    <button class="btnMain" onclick="sendSuggest()">📨 إرسال الاقتراح</button>
+    <button style="background:none;color:#64748b;border:none;margin-top:8px;width:100%;font-family:Cairo;cursor:pointer;" onclick="closeSuggest()">إغلاق</button>
+  </div>
+</div>
 <div id="coursePage" class="hidden">
   <div class="courseTop">
     <div class="courseTopInner">
