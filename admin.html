@@ -178,18 +178,20 @@ async function adminLogin(){
 async function adminLogout(){ await fetch('/api/admin/logout',{method:'POST'}); location.reload(); }
 
 function showTab(t){
-    ['msgs','courses','books','exams','codes','resets','sug','users'].forEach(x=>{
-    document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
-    document.getElementById('bt-'+x).classList.toggle('active', x===t);
+  ['msgs','courses','books','exams','codes','sug','users'].forEach(x=>{
+    const tab = document.getElementById('tab-'+x);
+    const btn = document.getElementById('bt-'+x);
+    if(tab) tab.classList.toggle('hidden', x!==t);
+    if(btn) btn.classList.toggle('active', x===t);
   });
   if(t==='msgs') loadMsgs();
+  if(t==='codes') loadCodesTab();
   if(t==='courses') loadCoursesTab();
   if(t==='books') loadBooksTab();
   if(t==='exams') loadExamsTab();
-  if(t==='codes') loadCodesTab();
   if(t==='users') loadUsers();
+  if(t==='sug') loadSug();
 }
-
 function showAdmin(){
   document.getElementById('loginBox').classList.add('hidden');
   document.getElementById('adminApp').classList.remove('hidden');
