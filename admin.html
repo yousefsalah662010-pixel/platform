@@ -517,7 +517,7 @@ async function loadUsers(){
            <td style="white-space:nowrap;">${u.disabled
         ? `<button class="btnGreen btnSm" onclick="toggleUser(${u.id})">✅ تفعيل</button>`
         : `<button class="btnRed btnSm" onclick="toggleUser(${u.id})">🚫 تعطيل</button>`}
-        <button class="btnOrange btnSm" onclick="genTempPass(${u.id}, '${esc(u.first_name)}')">🔑 كلمة مؤقتة</button></td>
+        <button class="btnOrange btnSm" onclick="genTempPass(${u.id}, '${esc(u.first_name)}')">🔑 كلمة مؤقتة</button>        <button class="btnRed btnSm" onclick="deleteUser(${u.id}, '${esc(u.first_name)} ${esc(u.last_name)}')">🗑️</button></td>
     </tr>`).join('')}</table>`;
 }
 async function toggleUser(id){
@@ -559,6 +559,13 @@ async function delSug(id){
   if(!confirm('امسح الاقتراح ده؟')) return;
   await fetch('/api/admin/suggestions/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
   loadSug();
+}
+ async function deleteUser(uid, name){
+  if(!confirm(`⚠️ حذف حساب "${name}" نهائيًا؟\n\nهيتمسح: اشتراكاته + درجات امتحاناته + رسائله + كل بياناته!\n\nالعملية مش بترجع!`)) return;
+  if(!confirm('متأكد 100%؟ آخر تأكيد 😅')) return;
+  const r = await fetch('/api/admin/delete-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});
+  const d = await r.json();
+  if(d.ok){ alert('✅ الحساب اتمسح بكل بياناته'); loadUsers(); }
 }
 window.onload = async ()=>{
   const r = await fetch('/api/admin/messages');
