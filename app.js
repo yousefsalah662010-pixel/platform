@@ -460,7 +460,38 @@ async function loadReplies(){
         <div class="a"><b>رد الدعم:</b> ${esc(m.reply)}</div></div>`).join('')
     : '<div class="noReply">مفيش ردود لسه</div>';
 }
+function openForgot(){
+  const emailEl = document.getElementById('loginEmail');
+  const email = emailEl ? emailEl.value.trim() : '';
+  window.open('https://wa.me/201283674859?text=' + encodeURIComponent(
+    'أنا ...\n' +
+    'أريد تغيير كلمة المرور لأني نسيتها\n' +
+    'هذا البريد المسجل به: ' + (email || '____ اكتب بريدك هنا ____') + '\n' +
+    'هذا رقم الهاتف المسجل به: ____ اكتب رقمك هنا ____'
+  ));
+}
 
+function openChangePass(){
+  document.getElementById('passPanel').classList.remove('hidden');
+  document.getElementById('passMsg').innerHTML='';
+  document.getElementById('cpOld').value='';
+  document.getElementById('cpNew').value='';
+  document.getElementById('cpNew2').value='';
+}
+function closePassPanel(){ document.getElementById('passPanel').classList.add('hidden'); }
+async function doChangePass(){
+  const m = document.getElementById('passMsg');
+  if(document.getElementById('cpNew').value !== document.getElementById('cpNew2').value){
+    m.innerHTML='<div class="error">الجديدة والتأكيد مش متطابقين</div>'; return;
+  }
+  const r = await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({old_pass:document.getElementById('cpOld').value, new_pass:document.getElementById('cpNew').value})});
+  const d = await r.json();
+  if(d.ok){
+    m.innerHTML='<div class="success">✅ '+esc(d.msg)+'</div>';
+    setTimeout(closePassPanel, 1500);
+  } else m.innerHTML='<div class="error">'+esc(d.msg)+'</div>';
+}
 window.onload = async ()=>{
   const r = await fetch('/api/me');
   if(r.ok){ me = await r.json(); await loadCourses(); showApp(); }
