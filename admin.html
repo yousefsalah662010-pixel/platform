@@ -64,7 +64,11 @@
 
 <div id="adminApp" class="hidden">
   <header>
-    <h1 style="font-size:20px;">👑 لوحة تحكم يوسف صلاح</h1>
+       <h1 style="font-size:20px;display:flex;align-items:center;gap:12px;">👑 لوحة تحكم يوسف صلاح
+      <span style="background:linear-gradient(135deg,#10b981,#059669);border:2px solid #fbbf24;border-radius:50%;width:56px;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;">
+        <span id="adminStuCount" style="font-size:16px;font-weight:900;">—</span>طالب
+      </span>
+    </h1>
     <button onclick="adminLogout()">خروج</button>
   </header>
   <div class="tabs">
@@ -196,6 +200,10 @@ function showAdmin(){
   document.getElementById('loginBox').classList.add('hidden');
   document.getElementById('adminApp').classList.remove('hidden');
   showTab('msgs');
+   fetch('/api/stats').then(r=>r.json()).then(d=>{
+    const el = document.getElementById('adminStuCount');
+    if(el) el.textContent = d.students;
+  });
 }
 
 /* ═══ الرسائل ═══ */
