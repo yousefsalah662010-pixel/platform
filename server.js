@@ -403,6 +403,17 @@ app.post('/api/change-password', requireLogin, async (req,res)=>{
     [bcrypt.hashSync(req.body.new_pass,10), req.session.userId]);
   res.json({ok:true,msg:'تم تغيير كلمة المرور بنجاح!'});
 });
+app.post('/api/admin/delete-user', requireAdmin, async (req,res)=>{
+  const uid = Number(req.body.user_id);
+  if(!uid) return res.json({ok:false});
+  await pool.query('DELETE FROM submissions WHERE user_id=$1',[uid]);
+  await pool.query('DELETE FROM lesson_views WHERE user_id=$1',[uid]);
+  await pool.query('DELETE FROM notifications WHERE user_id=$1',[uid]);
+  await pool.query('DELETE FROM messages WHERE user_id=$1',[uid]);
+  await pool.query('DELETE FROM enrollments WHERE user_id=$1',[uid]);
+  await pool.query('DELETE FROM users WHERE id=$1',[uid]);
+  res.json({ok:true});
+});
 app.post('/api/admin/toggle-user', requireAdmin, async (req,res)=>{
   const u = (await pool.query('SELECT disabled FROM users WHERE id=$1',[Number(req.body.user_id)])).rows[0];
   if(!u) return res.json({ok:false});
