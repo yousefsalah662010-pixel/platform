@@ -79,7 +79,7 @@
       <button class="btnGray" onclick="loadResets()">🔄 تحديث</button>
       <div id="resetsList" style="margin-top:15px;"></div>
     </div>
-
+    <button id="bt-sug" onclick="showTab('sug')">💡 الاقتراحات</button>
     <button id="bt-users" onclick="showTab('users')">👥 الطلاب</button>
   </div>
   <div class="content">
@@ -153,6 +153,10 @@
       <button class="btnGray" onclick="loadResets()">🔄 تحديث</button>
       <div id="resetsList" style="margin-top:15px;"></div>
     </div>
+    <div id="tab-sug" class="hidden">
+      <h2>💡 اقتراحات الطلاب</h2>
+      <div id="sugList"></div>
+    </div>
 
     <div id="tab-users" class="hidden">
       <h2>الطلاب 👥</h2>
@@ -174,7 +178,7 @@ async function adminLogin(){
 async function adminLogout(){ await fetch('/api/admin/logout',{method:'POST'}); location.reload(); }
 
 function showTab(t){
-   ['msgs','courses','books','exams','codes','resets','users'].forEach(x=>{
+    ['msgs','courses','books','exams','codes','resets','sug','users'].forEach(x=>{
     document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
     document.getElementById('bt-'+x).classList.toggle('active', x===t);
   });
@@ -537,6 +541,22 @@ async function loadResets(){
       <b>${esc(x.email)}</b> — <span style="font-size:24px;font-weight:900;color:#1e3a8a;letter-spacing:4px;">${esc(x.code)}</span>
       <div style="font-size:12px;color:#64748b;margin-top:4px;">📱 ابعت الرمز للطالب واتساب | ينتهي بعد 15 دقيقة</div>
     </div>`).join('') : '<div class="card">مفيش طلبات استعادة دلوقتي</div>';
+}
+ async function loadSug(){
+  const r = await fetch('/api/admin/suggestions');
+  const rows = await r.json();
+  document.getElementById('sugList').innerHTML = rows.length ? rows.map(s=>`
+    <div class="card">
+      <div class="info">👤 ${esc(s.first_name+' '+s.last_name)} | 📞 ${esc(s.phone)} | 🕐 ${new Date(s.created_at).toLocaleString('ar-EG')}</div>
+      <div class="txt">${esc(s.text)}</div>
+      ${s.pic?`<img src="${s.pic}" style="max-width:250px;max-height:250px;border-radius:10px;margin-bottom:10px;display:block;">`:''}
+      <button class="btnRed btnSm" onclick="delSug(${s.id})">🗑️ تم — امسح الاقتراح</button>
+    </div>`).join('') : '<div class="card">مفيش اقتراحات دلوقتي</div>';
+}
+async function delSug(id){
+  if(!confirm('امسح الاقتراح ده؟')) return;
+  await fetch('/api/admin/suggestions/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  loadSug();
 }
 window.onload = async ()=>{
   const r = await fetch('/api/admin/messages');
