@@ -48,6 +48,7 @@ function showApp(){
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   renderProfile(); loadReplies(); loadBooks(); loadNotifs();
+      loadStudentsCount();
   setInterval(loadNotifs, 25000);
   if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
