@@ -97,6 +97,7 @@ function renderProfile(){
     <button onclick="document.getElementById('picInput').click()" style="background:#1e3a8a;color:#fff;border:none;padding:9px 24px;border-radius:10px;font-family:Cairo;font-weight:700;cursor:pointer;">📸 تغيير صورتي</button>
     <div id="picName" style="font-size:12px;color:#94a3b8;margin-bottom:15px;">لم يتم اختيار صورة بعد</div>
     <div style="font-size:12px;color:#94a3b8;margin-bottom:15px;">محاولاتك المتبقية للتراكم: <b style="color:${u.attempts_left>1?'#059669':'#dc2626'}">${u.attempts_left ?? 3}</b></div>
+        <button onclick="openChangePass()" style="background:#1e3a8a;color:#fff;border:none;padding:10px 25px;border-radius:10px;font-family:Cairo;font-weight:700;cursor:pointer;margin-bottom:20px;">🔒 تغيير كلمة المرور</button>
     <div class="profileRow"><span class="lbl">الاسم</span><span class="val">${esc(u.first_name+' '+u.last_name)}</span></div>
     <div class="profileRow"><span class="lbl">رقم الهاتف</span><span class="val">${esc(u.phone)}</span></div>
     <div class="profileRow"><span class="lbl">هاتف ولي الأمر</span><span class="val">${esc(u.parent_phone)}</span></div>
