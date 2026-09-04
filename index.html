@@ -364,6 +364,17 @@
     <button style="background:none;color:#64748b;border:none;margin-top:8px;width:100%;font-family:Cairo;cursor:pointer;" onclick="closeSuggest()">إغلاق</button>
   </div>
 </div>
+<div id="passPanel" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;">
+  <div style="max-width:400px;margin:80px auto;background:#fff;border-radius:16px;padding:30px;">
+    <h3 style="color:#1e3a8a;margin-bottom:15px;">🔒 تغيير كلمة المرور</h3>
+    <div id="passMsg"></div>
+    <input id="cpOld" type="password" placeholder="كلمة السر الحالية" style="width:100%;padding:11px;border:2px solid #e2e8f0;border-radius:10px;font-family:Cairo;margin-bottom:10px;">
+    <input id="cpNew" type="password" placeholder="كلمة السر الجديدة (6+ حروف)" style="width:100%;padding:11px;border:2px solid #e2e8f0;border-radius:10px;font-family:Cairo;margin-bottom:10px;">
+    <input id="cpNew2" type="password" placeholder="أعد الجديدة للتأكيد" style="width:100%;padding:11px;border:2px solid #e2e8f0;border-radius:10px;font-family:Cairo;margin-bottom:15px;">
+    <button class="btnMain" onclick="doChangePass()">✅ حفظ</button>
+    <button style="background:none;color:#64748b;border:none;margin-top:8px;width:100%;font-family:Cairo;cursor:pointer;" onclick="closePassPanel()">إلغاء</button>
+  </div>
+</div>
 
 <div id="coursePage" class="hidden">
   <div class="courseTop">
