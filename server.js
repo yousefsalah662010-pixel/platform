@@ -210,9 +210,8 @@ app.post('/api/notifications/read', requireLogin, async (req,res)=>{
 app.get('/api/stats', async (req,res)=>{
   const base = 277;
   const real = (await pool.query('SELECT COUNT(*)::int AS n FROM users')).rows[0].n;
-  res.json({ students: base + real });
-});
-app.get('/api/courses', async (req,res)=>{
+  res.json({ students: base + real, realStudents: real });
+});app.get('/api/courses', async (req,res)=>{
   res.json((await pool.query('SELECT * FROM courses ORDER BY id')).rows);
 });
 
