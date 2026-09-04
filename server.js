@@ -361,6 +361,27 @@ app.post('/api/admin/reply', requireAdmin, async (req,res)=>{
 app.get('/api/admin/users', requireAdmin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM users ORDER BY id DESC')).rows.map(cleanUser));
 });
+app.post('/api/admin/gen-temp-pass', requireAdmin, async (req,res)=>{
+  const uid = Number(req.body.user_id);
+  const u = (await pool.query('SELECT * FROM users WHERE id=$1',[uid])).rows[0];
+  if(!u) return res.json({ok:false});
+  const temp = 'T' + Math.floor(100000 + Math.random()*900000);
+  await pool.query('UPDATE users SET password=$1 WHERE id=$2',[bcrypt.hashSync(temp,10), uid]);
+  await notify(uid, '🔑 تم إعادة تعيين كلمة مرورك من الإدارة — كلمة السر المؤقتة: ' + temp + ' — غيّرها فورًا من الملف الشخصي');
+  res.json({ok:true, temp});
+});
+
+app.post('/api/change-password', requireLogin, async (req,res)=>{
+  const u = (await pool.query('SELECT * FROM users WHERE id=$1',[req.session.userId])).rows[0];
+  if(!u) return res.json({ok:false});
+  if(!bcrypt.compareSync(req.body.old_pass||'', u.password))
+    return res.json({ok:false,msg:'كلمة السر الحالية غلط'});
+  if((req.body.new_pass||'').length < 6)
+    return res.json({ok:false,msg:'الجديدة لازم 6 حروف على الأقل'});
+  await pool.query('UPDATE users SET password=$1 WHERE id=$2',
+    [bcrypt.hashSync(req.body.new_pass,10), req.session.userId]);
+  res.json({ok:true,msg:'تم تغيير كلمة المرور بنجاح!'});
+});
 app.post('/api/admin/toggle-user', requireAdmin, async (req,res)=>{
   const u = (await pool.query('SELECT disabled FROM users WHERE id=$1',[Number(req.body.user_id)])).rows[0];
   if(!u) return res.json({ok:false});
