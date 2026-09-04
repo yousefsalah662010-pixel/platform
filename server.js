@@ -64,6 +64,10 @@ async function initDB(){
     `CREATE TABLE IF NOT EXISTS lesson_views(
       user_id INTEGER NOT NULL, lesson_id INTEGER NOT NULL,
       viewed_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(user_id, lesson_id))`,
+        `CREATE TABLE IF NOT EXISTS suggestions(
+      id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL,
+      text TEXT NOT NULL, pic TEXT,
+      created_at TIMESTAMP DEFAULT NOW())`,
     `CREATE TABLE IF NOT EXISTS sessions(
       token TEXT PRIMARY KEY, user_id INTEGER, admin INTEGER DEFAULT 0,
       expires TIMESTAMPTZ NOT NULL)`
@@ -366,7 +370,15 @@ app.post('/api/admin/reply', requireAdmin, async (req,res)=>{
   if(m) await notify(m.user_id, '💬 الدعم رد على رسالتك — افتح قسم "ردود الدعم"');
   res.json({ok:true});
 });
-
+app.get('/api/admin/suggestions', requireAdmin, async (req,res)=>{
+  const rows = (await pool.query(`SELECT s.*, u.first_name, u.last_name, u.phone, u.email
+    FROM suggestions s JOIN users u ON u.id=s.user_id ORDER BY s.id DESC`)).rows;
+  res.json(rows);
+});
+app.post('/api/admin/suggestions/delete', requireAdmin, async (req,res)=>{
+  await pool.query('DELETE FROM suggestions WHERE id=$1',[Number(req.body.id)]);
+  res.json({ok:true});
+});
 app.get('/api/admin/users', requireAdmin, async (req,res)=>{
   res.json((await pool.query('SELECT * FROM users ORDER BY id DESC')).rows.map(cleanUser));
 });
