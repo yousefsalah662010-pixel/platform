@@ -92,7 +92,9 @@ function renderProfile(){
   }).join('');
   document.getElementById('profileCard').innerHTML = `
     ${u.profile_pic ? `<img src="${u.profile_pic}" class="avatar" alt="">` : `<div class="avatarPh">👤</div>`}
-    <input type="file" accept="image/*" class="picInput" onchange="pickPic(this)">
+       <input type="file" accept="image/*" id="picInput" class="hidden" onchange="pickPic(this); document.getElementById('picName').textContent = this.files[0] ? '✅ ' + this.files[0].name : 'لم يتم اختيار صورة بعد';">
+    <button onclick="document.getElementById('picInput').click()" style="background:#1e3a8a;color:#fff;border:none;padding:9px 24px;border-radius:10px;font-family:Cairo;font-weight:700;cursor:pointer;">📸 تغيير صورتي</button>
+    <div id="picName" style="font-size:12px;color:#94a3b8;margin-bottom:15px;">لم يتم اختيار صورة بعد</div>
     <div style="font-size:12px;color:#94a3b8;margin-bottom:15px;">محاولاتك المتبقية للتراكم: <b style="color:${u.attempts_left>1?'#059669':'#dc2626'}">${u.attempts_left ?? 3}</b></div>
     <div class="profileRow"><span class="lbl">الاسم</span><span class="val">${esc(u.first_name+' '+u.last_name)}</span></div>
     <div class="profileRow"><span class="lbl">رقم الهاتف</span><span class="val">${esc(u.phone)}</span></div>
