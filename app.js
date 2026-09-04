@@ -545,6 +545,8 @@ async function loadStudentsCount(){
     if(h && d.students) h.textContent = d.students;
     const a = document.getElementById('authStudentsCount');
     if(a && d.students) a.textContent = d.students;
+    const s = document.getElementById('subCount');
+    if(s && d.students) s.textContent = d.students - 1;
   } catch(e){}
 }window.onload = async ()=>{
   loadStudentsCount();
